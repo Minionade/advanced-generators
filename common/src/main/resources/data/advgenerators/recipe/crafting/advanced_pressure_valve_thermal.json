@@ -1,0 +1,32 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": ["thermal_expansion"]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "thermal_expansion"
+    }
+  ],
+  "type": "thermal:smelter",
+  "input": [
+    {
+      "value": [{ "item": "advgenerators:pressure_valve" }],
+      "count": 1
+    },
+    {
+      "value": [{ "tag": "c:ingots/enderium" }],
+      "count": 4
+    }
+  ],
+  "result": [
+    {
+      "item": "advgenerators:advanced_pressure_valve",
+      "count": 1
+    }
+  ],
+  "energy": 64000
+}

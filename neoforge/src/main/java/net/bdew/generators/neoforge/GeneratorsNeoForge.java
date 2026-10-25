@@ -3,6 +3,7 @@ package net.bdew.generators.neoforge;
 import net.bdew.generators.Generators;
 import net.bdew.generators.platform.TransferPlatform;
 import net.bdew.generators.integration.MekanismGasInput;
+import net.bdew.generators.integration.ModernIndustrializationIntegration;
 import net.bdew.generators.integration.SingularityIterationIntegration;
 import net.bdew.generators.neoforge.platform.TransferPlatformImpl;
 import net.neoforged.bus.api.IEventBus;
@@ -16,6 +17,7 @@ public final class GeneratorsNeoForge {
         Generators.init();
         modBus.addListener(TransferPlatformImpl::registerCapabilities);
         if (ModList.get().isLoaded("mekanism")) modBus.addListener(MekanismGasInput::register);
+        if (ModList.get().isLoaded("modern_industrialization")) modBus.addListener(ModernIndustrializationIntegration::register);
         if (ModList.get().isLoaded("mio_icif")) modBus.addListener(SingularityIterationIntegration::register);
     }
 }

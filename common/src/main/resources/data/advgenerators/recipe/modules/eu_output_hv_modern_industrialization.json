@@ -1,0 +1,42 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "modern_industrialization"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "modern_industrialization"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "FMF",
+    "CPC",
+    "FWF"
+  ],
+  "key": {
+    "C": {
+      "item": "modern_industrialization:aluminum_cable"
+    },
+    "M": {
+      "item": "advgenerators:power_io"
+    },
+    "F": {
+      "item": "advgenerators:iron_frame"
+    },
+    "W": {
+      "item": "advgenerators:iron_wiring"
+    },
+    "P": {
+      "item": "advgenerators:iron_tubing"
+    }
+  },
+  "result": {
+    "id": "advgenerators:eu_output_hv"
+  }
+}
