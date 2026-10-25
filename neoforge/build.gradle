@@ -11,7 +11,7 @@ configurations {
     developmentNeoForge.extendsFrom common
 }
 dependencies {
-    neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
+    neoforge "net.neoforged:neoforge:${rootProject.neoforge_version}"
     modImplementation "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }
