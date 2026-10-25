@@ -211,6 +211,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             g.drawString(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),x+8,y+61,0xff404040,false);
             g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+72,0xff404040,false);
         } else if(machine.kind()==MachineKind.SENSOR) {
+            var controller = menu.machine().controller();
             g.drawString(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),x+8,y+61,0xff404040,false);
             g.drawString(font,sensorConditionText(controller),x+8,y+72,0xff404040,false);
         }
