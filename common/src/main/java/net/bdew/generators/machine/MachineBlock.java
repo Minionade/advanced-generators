@@ -50,7 +50,9 @@ public final class MachineBlock extends BaseEntityBlock {
     }
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof MachineBlockEntity machine)) return InteractionResult.PASS;
-        var target = kind.controller() || kind == MachineKind.CONTROL || kind == MachineKind.SENSOR || kind.output() ? machine : machine.controller();
+        // Controllers own their main GUI; control/sensor modules have their
+        // own per-module configuration. All other modules open the controller.
+        var target = kind.controller() || kind == MachineKind.CONTROL || kind == MachineKind.SENSOR ? machine : machine.controller();
         if (target == null) {
             if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.translatable("advgenerators.status." + machine.network().error()), true);
             return InteractionResult.sidedSuccess(level.isClientSide);
