@@ -620,7 +620,8 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         lastExchangerInputItem=tag.getBoolean("lastExchangerInputItem"); lastExchangerOutputItem=tag.getBoolean("lastExchangerOutputItem");
         for(int i=0;i<6;i++) { outputMode[i]=i<modes.length?Math.clamp(modes[i],0,3):0; outputSelection[i]=i<selections.length?Math.clamp(selections[i],0,2):0; outputLimit[i]=i<limits.length?Math.clamp(limits[i],1,Integer.MAX_VALUE):Integer.MAX_VALUE; }
         outputConfigs.clear();
-        for (var faceTag : tag.getList("outputConfigs", Tag.TAG_COMPOUND)) {
+        for (Tag faceEntry : tag.getList("outputConfigs", Tag.TAG_COMPOUND)) {
+            if (!(faceEntry instanceof CompoundTag faceTag)) continue;
             long position = faceTag.getLong("position");
             int direction = faceTag.getInt("direction");
             if (direction < 0 || direction >= Direction.values().length) continue;
