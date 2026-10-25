@@ -5,6 +5,10 @@ architectury {
 }
 repositories {
     maven { url = 'https://www.cursemaven.com' }
+    maven {
+        url = 'https://modmaven.dev/'
+        content { includeGroup 'dev.technici4n' }
+    }
 }
 configurations {
     common
@@ -21,6 +25,7 @@ dependencies {
     modCompileOnly "curse.maven:mekanism-268560:7904058"
     modCompileOnly "curse.maven:singularity-iteration-1617642:9299533"
     modCompileOnly "curse.maven:modern-industrialization-405388:8863289"
+    modCompileOnly "dev.technici4n:GrandPower:3.0.0"
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }
 }
