@@ -228,6 +228,23 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         else super.onClose();
     }
     @Override public void render(GuiGraphics g,int mx,int my,float delta) {
+        if(outputConfigOpen) {
+            renderBackground(g,mx,my,delta);
+            drawOutputConfig(g,mx,my);
+            int panelLeft=(width-124)/2,panelTop=(height-138)/2;
+            int row=(int)Math.floor((my-(panelTop+19))/19.0);
+            if(row>=0&&row<6&&mx>=panelLeft+7&&mx<panelLeft+24&&my>=panelTop+19+row*19&&my<panelTop+37+row*19)
+                g.renderTooltip(font,Component.translatable("advgenerators.output."+row),mx,my);
+            else if(row>=0&&row<6&&mx>=panelLeft+25&&mx<panelLeft+77) {
+                String mode=switch(menu.outputMode(row)){case 1->"Signal";case 2->"No sig";case 3->"Off";default->"Always";};
+                g.renderTooltip(font,Component.translatable("advgenerators.gui.output.mode",mode),mx,my);
+            }
+            else if(row>=0&&row<6&&mx>=panelLeft+79&&mx<panelLeft+112) {
+                String key=menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER?"advgenerators.gui.output.selection":"advgenerators.gui.output.limit";
+                g.renderTooltip(font,Component.translatable(key),mx,my);
+            }
+            return;
+        }
         renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my);
         int x=mx-leftPos,y=my-topPos;
         if(menu.machine().kind().controller()&&inside(x,y,153,19)) g.renderTooltip(font,Component.translatable("advgenerators.gui.button.output"),mx,my);
