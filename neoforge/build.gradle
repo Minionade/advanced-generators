@@ -29,6 +29,9 @@ dependencies {
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }
 }
+processResources {
+    from(project(':common').file('src/main/resources/resourcepacks')) { into 'resourcepacks' }
+}
 shadowJar { configurations = [project.configurations.shadowCommon]; archiveClassifier = 'dev-shadow' }
 remapJar { inputFile.set shadowJar.archiveFile; dependsOn shadowJar; archiveClassifier = null }
 jar { archiveClassifier = 'dev' }
