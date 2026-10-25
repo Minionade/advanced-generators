@@ -260,9 +260,85 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         };
     }
     private boolean sensor() {
-        var c = controller(); if(c == null || sensorMetric == 0) return false;
-        double x = c.metric(sensorMetric);
-        return switch(sensorCondition) { case 0 -> x <= 0; case 1 -> x > 0; case 2 -> x < .25; case 3 -> x < .5; case 4 -> x < .75; case 5 -> x >= .25; case 6 -> x >= .5; case 7 -> x >= .75; case 8 -> x >= 1; default -> false; };
+        var c = controller();
+        if (c == null || sensorMetric == 0) return false;
+        int metric = c.sensorMetricFor(sensorMetric);
+        if (metric == 0) return false;
+        double value = c.metric(metric);
+
+        // The legacy sensor offers named states for analog metrics (RPM, heat,
+        // and generation), and fill thresholds for tanks/buffers.
+        if (metric == 6 || metric == 7 || metric == 9) {
+            double midpoint = switch (metric) {
+                case 7 -> kind() == MachineKind.SYNGAS_CONTROLLER
+                    ? GeneratorConfig.INSTANCE.syngasWorkHeat / GeneratorConfig.INSTANCE.syngasMaxHeat
+                    : GeneratorConfig.INSTANCE.exchangerStartHeat / GeneratorConfig.INSTANCE.exchangerMaxHeat;
+                default -> .5;
+            };
+            return switch (sensorCondition) {
+                case 0 -> value <= 0;
+                case 1 -> value > 0 && (metric != 7 || value < midpoint);
+                case 2 -> value >= midpoint;
+                default -> value >= 1;
+            };
+        }
+        return switch (sensorCondition) {
+            case 0 -> value <= 0;
+            case 1 -> value > 0;
+            case 2 -> value > .05;
+            case 3 -> value > .25;
+            case 4 -> value > .5;
+            case 5 -> value > .75;
+            case 6 -> value > .95;
+            case 7 -> value >= 1;
+            default -> value < 1;
+        };
+    }
+
+    /** Sensor choices are controller-specific, matching the original machine screens. */
+    public static int sensorMetricCount(MachineKind controller) {
+        return switch (controller) {
+            case FUEL_TURBINE_CONTROLLER, STEAM_TURBINE_CONTROLLER -> 3;
+            case SYNGAS_CONTROLLER -> 5;
+            case EXCHANGER_CONTROLLER -> 5;
+            default -> 0;
+        };
+    }
+
+    /** Returns the shared metric id selected by the controller-specific sensor list. */
+    public int sensorMetricFor(int selection) {
+        if (selection < 1 || selection > sensorMetricCount(kind())) return 0;
+        int[] choices = switch (kind()) {
+            case FUEL_TURBINE_CONTROLLER -> new int[]{1, 2, 9}; // power, fuel, generation
+            case STEAM_TURBINE_CONTROLLER -> new int[]{1, 2, 6}; // power, steam, speed
+            case SYNGAS_CONTROLLER -> new int[]{2, 4, 3, 8, 7}; // water, gas, steam, carbon, heat
+            case EXCHANGER_CONTROLLER -> new int[]{2, 5, 3, 4, 7}; // hot in/out, cold in/out, heat
+            default -> new int[0];
+        };
+        return choices[selection - 1];
+    }
+
+    public static int sensorConditionCount(MachineKind controller, int selection) {
+        int[] choices = switch (controller) {
+            case FUEL_TURBINE_CONTROLLER -> new int[]{1, 2, 9};
+            case STEAM_TURBINE_CONTROLLER -> new int[]{1, 2, 6};
+            case SYNGAS_CONTROLLER -> new int[]{2, 4, 3, 8, 7};
+            case EXCHANGER_CONTROLLER -> new int[]{2, 5, 3, 4, 7};
+            default -> new int[0];
+        };
+        if (selection < 1 || selection > choices.length) return 9;
+        int metric = choices[selection - 1];
+        return metric == 6 || metric == 7 || metric == 9 ? 4 : 9;
+    }
+
+    public static int[] controlActions(MachineKind controller) {
+        return switch (controller) {
+            case FUEL_TURBINE_CONTROLLER -> new int[]{0, 1};
+            case STEAM_TURBINE_CONTROLLER -> new int[]{0, 2, 3};
+            case SYNGAS_CONTROLLER -> new int[]{0, 5, 6};
+            case EXCHANGER_CONTROLLER -> new int[]{0, 4};
+            default -> new int[]{0};
+        };
     }
     public void dropItems() {
         if (level == null || level.isClientSide) return;
@@ -272,7 +348,18 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             Containers.dropItemStack(level,worldPosition.getX()+.5,worldPosition.getY()+.5,worldPosition.getZ()+.5,stack); b.extract(stack.getCount(),false);
         }
     }
-    @Override public Component getDisplayName() { return Component.translatable("block.advgenerators."+kind().id()); }
+    @Override public Component getDisplayName() {
+        String key = switch (kind()) {
+            case FUEL_TURBINE_CONTROLLER -> "advgenerators.gui.turbine.title";
+            case STEAM_TURBINE_CONTROLLER -> "advgenerators.gui.turbine.steam.title";
+            case SYNGAS_CONTROLLER -> "advgenerators.gui.syngas.title";
+            case EXCHANGER_CONTROLLER -> "advgenerators.gui.exchanger.title";
+            case CONTROL -> "advgenerators.gui.control.title";
+            case SENSOR -> "advgenerators.gui.sensor.title";
+            default -> "block.advgenerators."+kind().id();
+        };
+        return Component.translatable(key);
+    }
     @Override public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) { return new MachineMenu(id,inv,this); }
     public CompoundTag snapshot() { var tag = new CompoundTag(); saveAdditional(tag,level.registryAccess()); return tag; }
     public void restore(CompoundTag tag) { loadAdditional(tag,level.registryAccess()); }

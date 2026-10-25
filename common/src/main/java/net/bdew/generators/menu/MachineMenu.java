@@ -109,12 +109,27 @@ public final class MachineMenu extends AbstractContainerMenu {
             } else if (button==18) dumpBuffers();
             else return false;
         } else if (machine.kind()==MachineKind.CONTROL) {
-            if (button==0) machine.controlAction=(machine.controlAction+1)%7;
+            if (button==0) {
+                var core = machine.controller();
+                int[] actions = MachineBlockEntity.controlActions(core == null ? MachineKind.FUEL_TURBINE_CONTROLLER : core.kind());
+                int current = 0;
+                for (int i=0;i<actions.length;i++) if (actions[i] == machine.controlAction) current = i;
+                machine.controlAction = actions[(current+1)%actions.length];
+            }
             else if (button==1) machine.controlHigh=!machine.controlHigh;
             else return false;
         } else if (machine.kind()==MachineKind.SENSOR) {
-            if (button==0) machine.sensorMetric=(machine.sensorMetric+1)%10;
-            else if (button==1) machine.sensorCondition=(machine.sensorCondition+1)%9;
+            if (button==0) {
+                var core = machine.controller();
+                int count = core == null ? 0 : MachineBlockEntity.sensorMetricCount(core.kind());
+                machine.sensorMetric=(machine.sensorMetric+1)%(count+1);
+                machine.sensorCondition=0;
+            }
+            else if (button==1) {
+                var core = machine.controller();
+                int count = core == null ? 9 : MachineBlockEntity.sensorConditionCount(core.kind(), machine.sensorMetric);
+                machine.sensorCondition=(machine.sensorCondition+1)%count;
+            }
             else return false;
         } else return false;
         machine.setChanged();

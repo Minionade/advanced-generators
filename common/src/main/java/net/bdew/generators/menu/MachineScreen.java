@@ -18,15 +18,15 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     @Override protected void init() {
         super.init();
         if (menu.machine().kind()==MachineKind.CONTROL) {
-            addRenderableWidget(Button.builder(Component.literal("Action"),b -> clickMenuButton(0))
-                .bounds(leftPos+31,topPos+33,64,20).build());
-            addRenderableWidget(Button.builder(Component.literal("Mode"),b -> clickMenuButton(1))
-                .bounds(leftPos+99,topPos+33,67,20).build());
+            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(0))
+                .bounds(leftPos+98,topPos+37,18,18).build());
+            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(1))
+                .bounds(leftPos+62,topPos+37,18,18).build());
         } else if (menu.machine().kind()==MachineKind.SENSOR) {
-            addRenderableWidget(Button.builder(Component.literal("Metric"),b -> clickMenuButton(0))
-                .bounds(leftPos+42,topPos+33,53,20).build());
-            addRenderableWidget(Button.builder(Component.literal("Rule"),b -> clickMenuButton(1))
-                .bounds(leftPos+99,topPos+33,53,20).build());
+            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(0))
+                .bounds(leftPos+53,topPos+37,18,18).build());
+            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(1))
+                .bounds(leftPos+71,topPos+37,18,18).build());
         }
     }
     private void clickMenuButton(int id) {
@@ -107,15 +107,16 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             drawInfo(g,x,y,65,(machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER?"Steam ":"Fuel ")+format(menu.consumption())+"/t");
         } else if(machine.kind()==MachineKind.CONTROL) {
             String[] actions={"disabled","useFuel","useSteam","generateEnergy","exchangeHeat","heatWater","mix"};
-            g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+61,0xff404040,false);
-            g.drawString(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),x+8,y+72,0xff404040,false);
+            g.drawString(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),x+8,y+61,0xff404040,false);
+            g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+72,0xff404040,false);
         } else if(machine.kind()==MachineKind.SENSOR) {
-            g.drawString(font,Component.literal("Metric: "+menu.sensorMetric()),x+8,y+61,0xff404040,false);
-            g.drawString(font,Component.literal("Threshold: "+sensorRule(menu.sensorCondition())),x+8,y+72,0xff404040,false);
+            g.drawString(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),x+8,y+61,0xff404040,false);
+            g.drawString(font,Component.translatable("advgenerators.sensor.condition."+menu.sensorCondition()),x+8,y+72,0xff404040,false);
         }
     }
-    private static String sensorRule(int condition) {
-        return switch(condition) { case 0 -> "empty"; case 1 -> "> 0%"; case 2 -> "< 25%"; case 3 -> "< 50%"; case 4 -> "< 75%"; case 5 -> ">= 25%"; case 6 -> ">= 50%"; case 7 -> ">= 75%"; default -> "full"; };
+    private String sensorControllerId() {
+        var controller = menu.machine().controller();
+        return controller == null ? "none" : controller.kind().id();
     }
     private void drawInfo(GuiGraphics g,int x,int y,int row,String value) {
         g.drawString(font,Component.literal(value),x+93,y+row,0xff404040,false);
