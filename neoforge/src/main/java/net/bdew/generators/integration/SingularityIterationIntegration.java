@@ -41,7 +41,7 @@ public final class SingularityIterationIntegration {
         }
 
         private long outputRateEu() {
-            return Math.max(0, core.outputLimit(machine, side)) / FE_PER_EU;
+            return Math.max(0, core.outputLimit(module, side)) / FE_PER_EU;
         }
 
         private CableTier tier() {
