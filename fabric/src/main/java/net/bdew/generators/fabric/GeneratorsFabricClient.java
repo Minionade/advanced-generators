@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component;
 
 public final class GeneratorsFabricClient implements ClientModInitializer {
     @Override public void onInitializeClient() {
+        FabricFluidBucketModel.register();
         MenuRegistry.registerScreenFactory(ModContent.MACHINE_MENU.get(), MachineScreen::new);
         BlockEntityRendererRegistry.register(ModContent.MACHINE_ENTITY.get(), MachineBorderRenderer::new);
         var container = FabricLoader.getInstance().getModContainer(Generators.MOD_ID).orElseThrow();

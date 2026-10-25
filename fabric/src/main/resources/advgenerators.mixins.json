@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "net.bdew.generators.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "BlockModelAccessor",
+    "ItemModelGeneratorAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
