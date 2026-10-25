@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 /** Six-face output editor; left click changes redstone mode, right click changes output selection. */
 public final class OutputConfigScreen extends Screen {
     private static final ResourceLocation BACKGROUND=Generators.id("textures/gui/outputs.png");
+    private static final ResourceLocation WIDGETS=Generators.id("textures/gui/widgets.png");
     private static final int[][] COLORS={{0xffc94a4a},{0xff61b34b},{0xff5687d6},{0xffd7b63e},{0xff45bfc2},{0xffa65cc4}};
     private final MachineMenu menu;
     private final MachineScreen parent;
@@ -33,17 +34,35 @@ public final class OutputConfigScreen extends Screen {
         for(int side=0;side<6;side++) {
             int rowY=top+19+side*19;
             graphics.fill(left+9,rowY+2,left+21,rowY+14,COLORS[side][0]);
-            graphics.drawString(font,modeName(menu.outputMode(side)),left+26,rowY+5,0xff303030,false);
-            if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER)
-                graphics.drawString(font,selectionName(menu.outputSelection(side)),left+80,rowY+5,0xff202020,false);
-            if(isPowerController(menu.machine().kind()))
-                graphics.drawString(font,limitName(menu.outputLimitIndex(side)),left+80,rowY+5,0xff202020,false);
+            int[] icon=modeIcon(menu.outputMode(side));
+            drawButton(graphics,left+25,rowY,mouseX,mouseY,icon[0],icon[1]);
+            graphics.drawString(font,modeName(menu.outputMode(side)),left+44,rowY+5,0xff303030,false);
+            if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER) {
+                drawButton(graphics,left+79,rowY,mouseX,mouseY,20,35);
+                graphics.drawString(font,selectionName(menu.outputSelection(side)),left+98,rowY+5,0xff202020,false);
+            } else if(isPowerController(menu.machine().kind())) {
+                drawButton(graphics,left+79,rowY,mouseX,mouseY,20,35);
+                graphics.drawString(font,limitName(menu.outputLimitIndex(side)),left+98,rowY+5,0xff202020,false);
+            }
             if(mouseX>=left+7&&mouseX<left+24&&mouseY>=rowY&&mouseY<rowY+18)
                 graphics.renderTooltip(font,Component.translatable("advgenerators.output."+side),mouseX,mouseY);
         }
-        if(mouseX>=left+20&&mouseX<left+110&&mouseY>=top+18&&mouseY<top+132)
-            graphics.renderTooltip(font,Component.literal(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER ? "Left click: redstone mode | Right click: output fluid" : "Left click: redstone mode | Middle click: FE limit"),mouseX,mouseY);
+        int hoverRow=(mouseY-(top+18))/19;
+        if(hoverRow>=0&&hoverRow<6&&mouseX>=left+25&&mouseX<left+77)
+            graphics.renderTooltip(font,Component.translatable("advgenerators.gui.output.mode",modeName(menu.outputMode(hoverRow))),mouseX,mouseY);
+        else if(hoverRow>=0&&hoverRow<6&&mouseX>=left+79&&mouseX<left+112) {
+            String key=menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER?"advgenerators.gui.output.selection":"advgenerators.gui.output.limit";
+            graphics.renderTooltip(font,Component.translatable(key),mouseX,mouseY);
+        }
         super.render(graphics,mouseX,mouseY,partialTick);
+    }
+
+    private static void drawButton(GuiGraphics g,int x,int y,int mx,int my,int iconU,int iconV) {
+        g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:20,18,16,16,256,256);
+        g.blit(WIDGETS,x+1,y+1,iconU,iconV,14,14,256,256);
+    }
+    private static int[] modeIcon(int mode) {
+        return switch(mode) { case 1 -> new int[]{37,35}; case 2 -> new int[]{21,35}; case 3 -> new int[]{69,35}; default -> new int[]{53,35}; };
     }
 
     private static String modeName(int mode) {
@@ -61,11 +80,17 @@ public final class OutputConfigScreen extends Screen {
 
     @Override public boolean mouseClicked(double mouseX,double mouseY,int button) {
         int row=(int)((mouseY-(top+18))/19);
-        if(mouseX>=left+20&&mouseX<left+110&&row>=0&&row<6) {
-            int action=button==0?row:button==1&&menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER?6+row:button==2&&isPowerController(menu.machine().kind())?12+row:-1;
+        if(row>=0&&row<6&&mouseX>=left+25&&mouseX<left+77&&button==0) {
+            int action=row;
             if(action>=0&&minecraft!=null&&minecraft.gameMode!=null)
                 minecraft.gameMode.handleInventoryButtonClick(menu.containerId,action);
             return true;
+        }
+        if(row>=0&&row<6&&mouseX>=left+79&&mouseX<left+112) {
+            int action=menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&(button==0||button==1)?6+row:
+                    isPowerController(menu.machine().kind())&&button==2?12+row:-1;
+            if(action>=0&&minecraft!=null&&minecraft.gameMode!=null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId,action);
+            return action>=0;
         }
         return super.mouseClicked(mouseX,mouseY,button);
     }

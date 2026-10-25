@@ -242,5 +242,12 @@
   "advgenerators.sensor.condition.6": "Over 95%",
   "advgenerators.sensor.condition.7": "Full",
   "advgenerators.sensor.condition.8": "Not full",
-  "advgenerators.sensor.metric.none.0": "No connected controller"
+  "advgenerators.sensor.metric.none.0": "No connected controller",
+  "advgenerators.gui.output.mode": "Redstone output mode: %s",
+  "advgenerators.gui.output.selection": "Choose the exchanger fluid output",
+  "advgenerators.gui.output.limit": "FE output limit per tick",
+  "advgenerators.tooltip.module": "Place as part of a connected multiblock.",
+  "advgenerators.tooltip.controller": "Controller for an Advanced Generators multiblock.",
+  "advgenerators.gui.button.output": "Configure output sides",
+  "advgenerators.gui.button.dump": "Clear internal buffers"
 }

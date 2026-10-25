@@ -2,7 +2,6 @@ package net.bdew.generators.menu;
 
 import net.bdew.generators.Generators;
 import net.bdew.generators.machine.MachineKind;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -12,28 +11,23 @@ import net.minecraft.world.entity.player.Inventory;
 /** Shared renderer for the original machine-specific Advanced Generators screens. */
 public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private static final int TEXTURE_SIZE = 256;
+    private static final ResourceLocation WIDGETS = Generators.id("textures/gui/widgets.png");
     public MachineScreen(MachineMenu menu, Inventory inventory, Component title) {
         super(menu,inventory,title); imageWidth=176; imageHeight=175; inventoryLabelY=82;
     }
-    @Override protected void init() {
-        super.init();
-        if (menu.machine().kind()==MachineKind.CONTROL) {
-            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(0))
-                .bounds(leftPos+98,topPos+37,18,18).build());
-            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(1))
-                .bounds(leftPos+62,topPos+37,18,18).build());
-        } else if (menu.machine().kind()==MachineKind.SENSOR) {
-            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(0))
-                .bounds(leftPos+53,topPos+37,18,18).build());
-            addRenderableWidget(Button.builder(Component.literal("↻"),b -> clickMenuButton(1))
-                .bounds(leftPos+71,topPos+37,18,18).build());
-        }
-    }
+    @Override protected void init() { super.init(); }
     private void clickMenuButton(int id) {
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId,id);
     }
     @Override public boolean mouseClicked(double mouseX,double mouseY,int button) {
         int x=(int)mouseX-leftPos,y=(int)mouseY-topPos;
+        if (button == 0 && menu.machine().kind()==MachineKind.CONTROL) {
+            if (inside(x,y,98,37)) { clickMenuButton(0); return true; }
+            if (inside(x,y,62,37)) { clickMenuButton(1); return true; }
+        } else if (button == 0 && menu.machine().kind()==MachineKind.SENSOR) {
+            if (inside(x,y,53,37)) { clickMenuButton(0); return true; }
+            if (inside(x,y,71,37)) { clickMenuButton(1); return true; }
+        }
         if(menu.machine().kind().controller()&&x>=153&&x<170) {
             if(y>=19&&y<36) { minecraft.setScreen(new OutputConfigScreen(menu,this)); return true; }
             if(y>=61&&y<78&&button==0) { clickMenuButton(18); return true; }
@@ -45,6 +39,56 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         g.blit(background(),x,y,0,0,imageWidth,imageHeight,TEXTURE_SIZE,TEXTURE_SIZE);
         drawGauges(g,x,y);
         drawMachineInfo(g,x,y);
+        drawButtons(g,x,y,mouseX,mouseY);
+    }
+    private void drawButtons(GuiGraphics g,int x,int y,int mouseX,int mouseY) {
+        int mx=mouseX-leftPos,my=mouseY-topPos;
+        var kind=menu.machine().kind();
+        if(kind.controller()) {
+            drawAtlasButton(g,x+153,y+19,mx,my,0,85,35);
+            drawAtlasButton(g,x+153,y+61,mx,my,52,69,35);
+        } else if(kind==MachineKind.CONTROL) {
+            String[] icons={"disabled","fuel","steam","energy","exchange","heating","mix"};
+            int action=Math.max(0,Math.min(icons.length-1,menu.controlAction()));
+            drawTextureButton(g,x+98,y+37,mx,my,Generators.id("textures/control/"+icons[action]+".png"));
+            drawAtlasButton(g,x+62,y+37,mx,my,20,menu.controlHigh()?37:21,35);
+        } else if(kind==MachineKind.SENSOR) {
+            drawTextureButton(g,x+53,y+37,mx,my,sensorIcon());
+            drawTextureButton(g,x+71,y+37,mx,my,conditionIcon());
+            drawAtlasButton(g,x+107,y+37,mx,my,20,menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?37:21,35);
+        }
+    }
+    private void drawAtlasButton(GuiGraphics g,int x,int y,int mx,int my,int baseU,int iconU,int iconV) {
+        g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:baseU==52?52:20,18,16,16,256,256);
+        g.blit(WIDGETS,x+1,y+1,iconU,iconV,14,14,256,256);
+    }
+    private void drawTextureButton(GuiGraphics g,int x,int y,int mx,int my,ResourceLocation icon) {
+        g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:20,18,16,16,256,256);
+        g.blit(icon,x,y,0,0,16,16,16,16);
+    }
+    private static boolean inside(int x,int y,int bx,int by) { return x>=bx&&x<bx+16&&y>=by&&y<by+16; }
+    private ResourceLocation sensorIcon() {
+        var controller=menu.machine().controller();
+        if(controller==null||menu.sensorMetric()==0)return Generators.id("textures/sensor/disabled.png");
+        String[][] choices=switch(controller.kind()) {
+            case FUEL_TURBINE_CONTROLLER -> new String[]{"power","tank/fuel","power"};
+            case STEAM_TURBINE_CONTROLLER -> new String[]{"power","tank/steam","turbine/turbine"};
+            case SYNGAS_CONTROLLER -> new String[]{"tank/water","tank/fuel","tank/steam","tank/carbon","heat/heat"};
+            case EXCHANGER_CONTROLLER -> new String[]{"tank/hot_in","tank/hot_out","tank/cold_in","tank/cold_out","heat/heat"};
+            default -> new String[0];
+        };
+        int index=menu.sensorMetric()-1;
+        return index<0||index>=choices.length?Generators.id("textures/sensor/disabled.png"):Generators.id("textures/sensor/"+choices[index]+".png");
+    }
+    private ResourceLocation conditionIcon() {
+        var controller=menu.machine().controller();
+        if(controller==null||menu.sensorMetric()==0)return Generators.id("textures/sensor/null.png");
+        int metric=controller.sensorMetricFor(menu.sensorMetric());
+        String name;
+        if(metric==6) name=switch(menu.sensorCondition()){case 0->"turbine/stopped";case 1->"turbine/low";case 2->"turbine/med";default->"turbine/high";};
+        else if(metric==7) name=switch(menu.sensorCondition()){case 0->"heat/cold";case 1->"heat/low";case 2->"heat/med";default->"heat/high";};
+        else name=switch(menu.sensorCondition()){case 0->"fill/empty";case 1->"fill/not_empty";case 2->"fill/5";case 3->"fill/25";case 4->"fill/50";case 5->"fill/75";case 6->"fill/95";case 7->"fill/full";default->"fill/not_full";};
+        return Generators.id("textures/sensor/"+name+".png");
     }
     private void drawGauges(GuiGraphics g,int x,int y) {
         switch(menu.machine().kind()) {
@@ -136,5 +180,22 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             g.drawString(font,Component.translatable("advgenerators.status."+menu.status()),8,inventoryLabelY,0xffaa2020,false);
         }
     }
-    @Override public void render(GuiGraphics g,int mx,int my,float delta) { renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my); }
+    @Override public void render(GuiGraphics g,int mx,int my,float delta) {
+        renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my);
+        int x=mx-leftPos,y=my-topPos;
+        if(menu.machine().kind().controller()&&inside(x,y,153,19)) g.renderTooltip(font,Component.translatable("advgenerators.gui.button.output"),mx,my);
+        else if(menu.machine().kind().controller()&&inside(x,y,153,61)) g.renderTooltip(font,Component.translatable("advgenerators.gui.button.dump"),mx,my);
+        else if(menu.machine().kind()==MachineKind.CONTROL&&inside(x,y,62,37)) g.renderTooltip(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),mx,my);
+        else if(menu.machine().kind()==MachineKind.CONTROL&&inside(x,y,98,37)) {
+            String[] actions={"disabled","useFuel","useSteam","generateEnergy","exchangeHeat","heatWater","mix"};
+            int action=Math.max(0,Math.min(actions.length-1,menu.controlAction()));
+            g.renderTooltip(font,Component.translatable("advgenerators.control.action."+actions[action]),mx,my);
+        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,53,37)) {
+            g.renderTooltip(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),mx,my);
+        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,71,37)) {
+            g.renderTooltip(font,Component.translatable("advgenerators.sensor.condition."+menu.sensorCondition()),mx,my);
+        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,107,37)) {
+            g.renderTooltip(font,Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"),mx,my);
+        }
+    }
 }

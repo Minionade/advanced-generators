@@ -37,7 +37,7 @@ public final class ModContent {
     static {
         for (var kind : MachineKind.values()) {
             var block = BLOCKS.register(kind.id(), () -> MachineBlock.create(kind)); MACHINES.put(kind, block);
-            ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new BlockItem(block.get(), new Item.Properties())));
+            ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new MachineBlockItem(block.get(), kind)));
         }
         for (var name : List.of("iron_frame", "power_io", "iron_tubing", "iron_wiring", "controller", "pressure_valve", "advanced_pressure_valve", "turbine_blade", "turbine_rotor_tier1", "turbine_rotor_tier2", "turbine_rotor_tier3", "turbine_rotor_tier4", "turbine_rotor_tier5"))
             ALL_ITEMS.put(name, ITEMS.register(name, () -> new Item(new Item.Properties())));
