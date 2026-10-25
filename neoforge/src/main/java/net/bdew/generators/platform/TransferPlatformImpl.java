@@ -114,7 +114,7 @@ public final class TransferPlatformImpl {
         public ItemStack insertItem(int i,ItemStack stack,boolean simulate){
             if(stack.isEmpty()||core.carbonValue(stack)<=0||!core.inventory.canPlaceItem(i,stack))return stack;
             ItemStack existing=core.inventory.getItem(i);
-            if(!existing.isEmpty()&&!ItemHandlerHelper.canItemStacksStack(existing,stack))return stack;
+            if(!existing.isEmpty()&&!ItemStack.isSameItemSameComponents(existing,stack))return stack;
             int current=existing.isEmpty()?0:existing.getCount();
             int limit=Math.min(core.inventory.getMaxStackSize(),stack.getMaxStackSize());
             int accepted=Math.min(stack.getCount(),limit-current);
