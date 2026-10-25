@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IDI",
+    "IXI",
+    "IDI"
+  ],
+  "key": {
+    "X": {
+      "items": "advgenerators:power_capacitor_tier1"
+    },
+    "I": {
+      "tag": "c:ingots/electrum"
+    },
+    "D": {
+      "tag": "c:gems/diamond"
+    }
+  },
+  "result": {
+    "id": "advgenerators:power_capacitor_tier2"
+  }
+}

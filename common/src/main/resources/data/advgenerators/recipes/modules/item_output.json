@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "F F",
+    " H ",
+    "F F"
+  ],
+  "key": {
+    "F": {
+      "items": "advgenerators:iron_frame"
+    },
+    "H": {
+      "items": "minecraft:hopper"
+    }
+  },
+  "result": {
+    "id": "advgenerators:item_output"
+  }
+}

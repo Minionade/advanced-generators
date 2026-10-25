@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "AAA",
+    "AVA",
+    "AAA"
+  ],
+  "key": {
+    "A": {
+      "tag": "c:alloys/elite"
+    },
+    "V": {
+      "items": "advgenerators:pressure_valve"
+    }
+  },
+  "result": {
+    "id": "advgenerators:advanced_pressure_valve"
+  }
+}

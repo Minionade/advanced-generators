@@ -1,0 +1,9 @@
+{
+  "type": "advgenerators:carbon_source",
+  "items": [
+    {
+      "tag": "c:dusts/coal"
+    }
+  ],
+  "carbonValue": 1600
+}

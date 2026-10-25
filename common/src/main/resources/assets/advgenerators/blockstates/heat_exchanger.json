@@ -1,0 +1,50 @@
+{
+  "variants": {
+    "facing=north,powered=false": {
+      "model": "advgenerators:block/heat_exchanger"
+    },
+    "facing=north,powered=true": {
+      "model": "advgenerators:block/heat_exchanger"
+    },
+    "facing=east,powered=false": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 90
+    },
+    "facing=east,powered=true": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 90
+    },
+    "facing=south,powered=false": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 180
+    },
+    "facing=south,powered=true": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 180
+    },
+    "facing=west,powered=false": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 270
+    },
+    "facing=west,powered=true": {
+      "model": "advgenerators:block/heat_exchanger",
+      "y": 270
+    },
+    "facing=up,powered=false": {
+      "model": "advgenerators:block/heat_exchanger",
+      "x": 270
+    },
+    "facing=up,powered=true": {
+      "model": "advgenerators:block/heat_exchanger",
+      "x": 270
+    },
+    "facing=down,powered=false": {
+      "model": "advgenerators:block/heat_exchanger",
+      "x": 90
+    },
+    "facing=down,powered=true": {
+      "model": "advgenerators:block/heat_exchanger",
+      "x": 90
+    }
+  }
+}

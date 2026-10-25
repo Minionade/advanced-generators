@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "FRF",
+    "RQR",
+    "FRF"
+  ],
+  "key": {
+    "F": {
+      "items": "advgenerators:iron_frame"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "Q": {
+      "tag": "c:gems/quartz"
+    }
+  },
+  "result": {
+    "id": "advgenerators:sensor"
+  }
+}

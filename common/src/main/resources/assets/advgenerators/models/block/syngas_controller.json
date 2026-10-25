@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "side": "advgenerators:block/syngascontroller/main",
+    "top": "advgenerators:block/syngascontroller/top",
+    "bottom": "advgenerators:block/syngascontroller/bottom"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "RMR",
+    "FPF",
+    "RWR"
+  ],
+  "key": {
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "M": {
+      "items": "advgenerators:power_io"
+    },
+    "F": {
+      "items": "advgenerators:iron_frame"
+    },
+    "W": {
+      "items": "advgenerators:iron_wiring"
+    },
+    "P": {
+      "items": "advgenerators:iron_tubing"
+    }
+  },
+  "result": {
+    "id": "advgenerators:fe_output"
+  }
+}

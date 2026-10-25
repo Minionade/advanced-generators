@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "side": "advgenerators:block/exchangercontroller/main",
+    "top": "advgenerators:block/exchangercontroller/top",
+    "bottom": "advgenerators:block/exchangercontroller/bottom"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_top",
+  "textures": {
+    "side": "advgenerators:block/turbine/tier2/main",
+    "top": "advgenerators:block/turbine/tier2/top"
+  }
+}

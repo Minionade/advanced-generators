@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "FCF",
+    "PPP",
+    "FWF"
+  ],
+  "key": {
+    "F": {
+      "items": "advgenerators:iron_frame"
+    },
+    "P": {
+      "items": "advgenerators:iron_tubing"
+    },
+    "W": {
+      "items": "advgenerators:iron_wiring"
+    },
+    "C": {
+      "items": "advgenerators:controller"
+    }
+  },
+  "result": {
+    "id": "advgenerators:steam_turbine_controller"
+  }
+}

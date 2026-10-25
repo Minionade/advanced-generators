@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+[[mods]]
+modId="advgenerators"
+version="${version}"
+displayName="Advanced Generators"
+authors="bdew, Minionade"
+description="Free-form modular power generators. Java multiloader port."
+[[dependencies.advgenerators]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.262,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.advgenerators]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.advgenerators]]
+modId="architectury"
+type="required"
+versionRange="[13.0.8,14)"
+ordering="AFTER"
+side="BOTH"

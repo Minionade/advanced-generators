@@ -1,0 +1,24 @@
+plugins { id 'com.gradleup.shadow' }
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentFabric.extendsFrom common
+}
+dependencies {
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
+    modImplementation "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
+    modImplementation include("teamreborn:energy:${rootProject.energy_version}")
+    common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
+    shadowCommon(project(path: ':common', configuration: 'transformProductionFabric')) { transitive = false }
+}
+shadowJar { configurations = [project.configurations.shadowCommon]; archiveClassifier = 'dev-shadow' }
+remapJar { inputFile.set shadowJar.archiveFile; dependsOn shadowJar; archiveClassifier = null }
+jar { archiveClassifier = 'dev' }
+sourcesJar { from project(':common').sourceSets.main.allSource }

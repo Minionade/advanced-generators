@@ -1,201 +1,40 @@
 plugins {
-    id 'scala'
-    id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id "com.matthewprenger.cursegradle" version "1.4.0"
-    id "com.modrinth.minotaur" version "2.+"
+    id 'architectury-plugin' version '3.4.162'
+    id 'dev.architectury.loom' version '1.10.455' apply false
+    id 'com.gradleup.shadow' version '8.3.6' apply false
 }
-
-file "build.properties" withReader {
-    def prop = new Properties()
-    prop.load(it)
-    ext.config = new ConfigSlurper().parse prop
+architectury { minecraft = minecraft_version }
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version + '+mc' + rootProject.minecraft_version
 }
-
-ext.buildnum = System.getenv('BUILDNUM')
-
-if (buildnum) {
-    ext.simpleVersion = "${config.mod.version}.${project.buildnum}"
-} else {
-    ext.simpleVersion = "${config.mod.version}-DEV"
-}
-
-version = simpleVersion + '-mc' + config.minecraft.version
-
-group = 'net.bdew'
-archivesBaseName = config.mod.id
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-
-minecraft {
-    mappings channel: 'parchment', version: config.parchment.version
-    runs {
-        client {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            mods {
-                register(config.mod.id) {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        server {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            mods {
-                register(config.mod.id) {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        data {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            args '--mod', config.mod.id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-            mods {
-                register(config.mod.id) {
-                    source sourceSets.main
-                }
-            }
-        }
-    }
-}
-
-sourceSets.main.resources {
-    srcDir 'src/generated/resources'
-    exclude '**/*.psd'
-}
-
-repositories {
-    maven {
-        name = "Azure-SLP"
-        url = uri("https://pkgs.dev.azure.com/Kotori316/minecraft/_packaging/mods/maven/v1")
-        content {
-            includeModule("com.kotori316", "ScalableCatsForce".toLowerCase())
-            includeModule("org.typelevel", "cats-core_2.13")
-            includeModule("org.typelevel", "cats-kernel_2.13")
-        }
-    }
-    maven {
-        name = "ModMaven"
-        url = "https://modmaven.dev"
-    }
-    maven {
-        url "https://cursemaven.com"
-    }
-    maven {
-        name = "bdew-mvn"
-        url "https://mvn.bdew.net/mc"
-    }
-    repositories.stream().filter { it instanceof MavenArtifactRepository }.forEach { repo ->
-        repo.content {
-            excludeVersionByRegex(".*", ".*", ".*_mapped_snapshot_.*")
-        }
-    }
-}
-
-dependencies {
-    minecraft(group: 'net.minecraftforge', name: 'forge', version: "${config.minecraft.version}-${config.forge.version}")
-
-    compileOnly(group: 'org.scala-lang', name: 'scala-library', version: config.scala.version)
-
-    runtimeOnly(group: "com.kotori316", name: "ScalableCatsForce".toLowerCase(), version: config.slp.version, classifier: "with-library") {
-        transitive(false)
-    }
-
-    if (findProject(":bdlib") != null) {
-        implementation project(":bdlib")
-    } else {
-        implementation fg.deobf("net.bdew:bdlib:${config.bdlib.version}-mc${config.minecraft.version}")
-    }
-
-    compileOnly fg.deobf("mezz.jei:jei-${config.minecraft.version}-common-api:${config.jei.version}")
-    compileOnly fg.deobf("mezz.jei:jei-${config.minecraft.version}-forge-api:${config.jei.version}")
-
-    compileOnly fg.deobf("curse.maven:ic2_classic-242942:${config.ic2c.fileId}")
-
-    compileOnly "mekanism:Mekanism:${config.mekanism.version}:api"
-}
-
-jar {
-    manifest {
-        attributes([
-                "Specification-Title"     : config.mod.id,
-                "Specification-Vendor"    : "bdew",
-                "Specification-Version"   : "1",
-                "Implementation-Title"    : project.name,
-                "Implementation-Version"  : simpleVersion,
-                "Implementation-Vendor"   : "bdew",
-                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
-    }
-}
-
-jar.finalizedBy('reobfJar')
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            artifact jar
-        }
-    }
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'dev.architectury.loom'
+    apply plugin: 'architectury-plugin'
+    base { archivesName = "advgenerators-${project.name}" }
+    java { toolchain.languageVersion = JavaLanguageVersion.of(21); withSourcesJar() }
+    loom { silentMojangMappingsLicense() }
     repositories {
-        maven {
-            name = "bdew-mvn"
-            url "https://mvn.bdew.net/mc"
-            credentials {
-                username = System.getenv("MAVEN_USER")
-                password = System.getenv("MAVEN_PASS")
-            }
-        }
+        mavenCentral()
+        maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.neoforged.net/releases/' }
+        maven { url = 'https://maven.teamreborn.com/' }
+        maven { url = 'https://maven.blamejared.com/' }
     }
-}
-
-curseforge {
-    apiKey = System.getenv('KEY_CURSEFORGE') ?: ""
-    project {
-        id = config.curseforge.id
-
-        releaseType = "alpha"
-        changelog = file("changelog.md")
-
-        addGameVersion config.minecraft.version
-
-        mainArtifact(jar) {
-            displayName = "Advanced Generators ${simpleVersion} (MC ${config.minecraft.version})"
-        }
-
-        relations {
-            requiredDependency 'scalable-cats-force'
-            requiredDependency 'bdlib'
-            optionalDependency 'jei'
-            optionalDependency 'mekanism'
-            optionalDependency 'thermal-expansion'
-            optionalDependency 'ic2-classic'
-        }
-    }
-}
-
-modrinth {
-    token = System.getenv('KEY_MODRINTH') ?: ""
-    projectId = config.modrinth.id
-    versionName = "${simpleVersion} (MC ${config.minecraft.version})"
-    versionNumber = simpleVersion
-    versionType = "alpha"
-    uploadFile = jar
-    gameVersions = [config.minecraft.version]
-    changelog = file("changelog.md").text
     dependencies {
-        required.project "scalable-cats-force"
-        required.project "bdlib"
+        minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+        mappings loom.officialMojangMappings()
+    }
+    tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
+    tasks.withType(ProcessResources).configureEach {
+        inputs.property 'version', project.version
+        filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml']) { expand version: project.version }
+    }
+    tasks.withType(Jar).configureEach {
+        from(rootProject.file('LICENSE'))
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
     }
 }

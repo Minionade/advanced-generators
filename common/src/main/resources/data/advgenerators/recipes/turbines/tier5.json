@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "FPF",
+    "WRW",
+    "FPF"
+  ],
+  "key": {
+    "R": {
+      "items": "advgenerators:turbine_rotor_tier5"
+    },
+    "F": {
+      "items": "advgenerators:iron_frame"
+    },
+    "W": {
+      "items": "advgenerators:iron_wiring"
+    },
+    "P": {
+      "items": "advgenerators:iron_tubing"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "advgenerators:turbine_tier5"
+  }
+}
