@@ -22,6 +22,8 @@ subprojects {
         maven { url = 'https://maven.neoforged.net/releases/' }
         maven { url = 'https://maven.teamreborn.com/' }
         maven { url = 'https://maven.blamejared.com/' }
+        maven { url = 'https://api.modrinth.com/maven' }
+        maven { url = 'https://modmaven.dev/' }
     }
     dependencies {
         minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"

@@ -42,7 +42,7 @@ public final class TransferPlatformImpl {
         var level=module.getLevel();var side=module.getBlockState().getValue(BlockStateProperties.FACING);
         var core=module.controller();if(core==null||!module.outputEnabled(side))return;
         BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
-        if(module.kind()==MachineKind.FE_OUTPUT) {
+        if(module.kind().isEnergyOutput()) {
             IEnergyStorage dst=level.getCapability(Capabilities.EnergyStorage.BLOCK,target.getBlockPos(),side.getOpposite());if(dst==null||!dst.canReceive())return;
             int moved=(int)core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
             if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0)core.extractEnergy(accepted,false);}
@@ -77,7 +77,7 @@ public final class TransferPlatformImpl {
         return new NativeItemHandler(core,core.inputSlots(),true,false);
     }
     public static IEnergyStorage energy(MachineBlockEntity machine,Direction side) {
-        if(machine.kind()!=MachineKind.FE_OUTPUT)return null;
+        if(!machine.kind().isEnergyOutput())return null;
         var core=machine.controller();if(core==null)return null;
         return new IEnergyStorage(){
             public int receiveEnergy(int amount,boolean simulate){if(amount<=0)return 0;long accepted=Math.min(amount,Math.max(0,core.energyCapacity-core.energy));if(!simulate&&accepted>0){core.energy+=accepted;core.setChanged();}return(int)accepted;}

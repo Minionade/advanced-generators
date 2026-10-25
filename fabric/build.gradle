@@ -15,6 +15,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
     modImplementation "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
     modImplementation include("teamreborn:energy:${rootProject.energy_version}")
+    modCompileOnly "mezz.jei:jei-1.21.1-fabric-api:${rootProject.jei_version}"
+    modLocalRuntime "mezz.jei:jei-1.21.1-fabric:${rootProject.jei_version}"
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionFabric')) { transitive = false }
 }

@@ -39,9 +39,9 @@ public final class ModContent {
             var block = BLOCKS.register(kind.id(), () -> new MachineBlock(kind)); MACHINES.put(kind, block);
             ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new BlockItem(block.get(), new Item.Properties())));
         }
-        for (var name : List.of("iron_frame", "power_io", "iron_tubing", "iron_wiring", "controller", "pressure_valve", "advanced_pressure_valve", "upgrade_kit", "turbine_blade", "turbine_rotor_tier1", "turbine_rotor_tier2", "turbine_rotor_tier3", "turbine_rotor_tier4", "turbine_rotor_tier5"))
+        for (var name : List.of("iron_frame", "power_io", "iron_tubing", "iron_wiring", "controller", "pressure_valve", "advanced_pressure_valve", "turbine_blade", "turbine_rotor_tier1", "turbine_rotor_tier2", "turbine_rotor_tier3", "turbine_rotor_tier4", "turbine_rotor_tier5"))
             ALL_ITEMS.put(name, ITEMS.register(name, () -> new Item(new Item.Properties())));
-        for (var name : List.of("turbine_kit_tier2", "turbine_kit_tier3", "turbine_kit_tier4", "turbine_kit_tier5", "capacitor_kit_tier2", "capacitor_kit_tier3"))
+        for (var name : List.of("upgrade_kit", "turbine_kit_tier2", "turbine_kit_tier3", "turbine_kit_tier4", "turbine_kit_tier5", "capacitor_kit_tier2", "capacitor_kit_tier3"))
             ALL_ITEMS.put(name, ITEMS.register(name, UpgradeKitItem::new));
         for (var name : List.of("liquid_fuel", "carbon_source", "upgrade_kit", "exchanger_heating", "exchanger_cooling")) {
             RECIPE_TYPES.put(name, TYPES.register(name, () -> new RecipeType<MachineRecipe>() { @Override public String toString() { return Generators.id(name).toString(); } }));

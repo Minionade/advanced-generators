@@ -58,14 +58,14 @@ public final class FabricTransfers {
         return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
     }
     public static EnergyStorage energy(MachineBlockEntity machine,Direction side) {
-        if(machine.kind()!=MachineKind.FE_OUTPUT)return null;
+        if(!machine.kind().isEnergyOutput())return null;
         var core=machine.controller();return core==null?null:new EnergyBufferStorage(core);
     }
     public static void push(MachineBlockEntity module) {
         var level=module.getLevel();var side=module.getBlockState().getValue(BlockStateProperties.FACING);
         var core=module.controller();if(core==null||!module.outputEnabled(side))return;
         BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
-        if(module.kind()==MachineKind.FE_OUTPUT) {
+        if(module.kind().isEnergyOutput()) {
             var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)return;
             long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
             if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}

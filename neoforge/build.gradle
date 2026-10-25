@@ -3,6 +3,9 @@ architectury {
     platformSetupLoomIde()
     neoForge()
 }
+repositories {
+    maven { url = 'https://www.cursemaven.com' }
+}
 configurations {
     common
     shadowCommon
@@ -13,6 +16,10 @@ configurations {
 dependencies {
     neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
     modImplementation "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
+    modCompileOnly "mezz.jei:jei-1.21.1-neoforge-api:${rootProject.jei_version}"
+    modLocalRuntime "mezz.jei:jei-1.21.1-neoforge:${rootProject.jei_version}"
+    modCompileOnly "mekanism:Mekanism:${rootProject.mekanism_version}:api"
+    modCompileOnly "curse.maven:singularity-iteration-1617642:9299533"
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }
 }
