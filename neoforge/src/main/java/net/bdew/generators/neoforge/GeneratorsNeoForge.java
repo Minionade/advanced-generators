@@ -1,8 +1,8 @@
 package net.bdew.generators.neoforge;
 
 import net.bdew.generators.Generators;
-import net.bdew.generators.platform.TransferPlatformImpl;
 import net.bdew.generators.platform.TransferPlatform;
+import net.bdew.generators.neoforge.platform.TransferPlatformImpl;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 

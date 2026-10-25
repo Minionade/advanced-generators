@@ -1,7 +1,8 @@
-package net.bdew.generators.platform;
+package net.bdew.generators.neoforge.platform;
 
 import net.bdew.generators.ModContent;
 import net.bdew.generators.machine.*;
+import net.bdew.generators.platform.TransferPlatform;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
