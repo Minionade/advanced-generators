@@ -3,6 +3,9 @@ architectury {
     platformSetupLoomIde()
     fabric()
 }
+loom {
+    mixin { defaultRefmapName.set("advgenerators.refmap.json") }
+}
 repositories {
     maven { url = 'https://api.modrinth.com/maven' }
 }
