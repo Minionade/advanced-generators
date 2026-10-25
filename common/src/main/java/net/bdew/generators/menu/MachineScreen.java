@@ -12,6 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private static final int TEXTURE_SIZE = 256;
     private static final ResourceLocation WIDGETS = Generators.id("textures/gui/widgets.png");
+    private boolean outputConfigOpen;
     public MachineScreen(MachineMenu menu, Inventory inventory, Component title) {
         super(menu,inventory,title); imageWidth=176; imageHeight=175; inventoryLabelY=82;
     }
@@ -21,6 +22,23 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     }
     @Override public boolean mouseClicked(double mouseX,double mouseY,int button) {
         int x=(int)mouseX-leftPos,y=(int)mouseY-topPos;
+        if(outputConfigOpen) {
+            int panelLeft=(width-124)/2, panelTop=(height-138)/2;
+            int row=(int)Math.floor((mouseY-(panelTop+19))/19.0);
+            if(row>=0&&row<6&&mouseX>=panelLeft+25&&mouseX<panelLeft+77&&button==0) {
+                clickMenuButton(row); return true;
+            }
+            if(row>=0&&row<6&&mouseX>=panelLeft+79&&mouseX<panelLeft+112) {
+                if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&(button==0||button==1)) clickMenuButton(6+row);
+                else if((menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER)&&button==2) clickMenuButton(12+row);
+                return true;
+            }
+            if(mouseX<panelLeft||mouseX>=panelLeft+124||mouseY<panelTop||mouseY>=panelTop+138) {
+                outputConfigOpen=false;
+                return true;
+            }
+            return true;
+        }
         if (button == 0 && menu.machine().kind()==MachineKind.CONTROL) {
             if (inside(x,y,98,37)) { clickMenuButton(0); return true; }
             if (inside(x,y,62,37)) { clickMenuButton(1); return true; }
@@ -29,17 +47,41 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             if (inside(x,y,71,37)) { clickMenuButton(1); return true; }
         }
         if(menu.machine().kind().controller()&&x>=153&&x<170) {
-            if(y>=19&&y<36) { minecraft.setScreen(new OutputConfigScreen(menu,this)); return true; }
+            if(y>=19&&y<36) { outputConfigOpen=!outputConfigOpen; return true; }
             if(y>=61&&y<78&&button==0) { clickMenuButton(18); return true; }
         }
         return super.mouseClicked(mouseX,mouseY,button);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mouseX,int mouseY) {
+        if(outputConfigOpen) { drawOutputConfig(g,mouseX,mouseY); return; }
         int x=(width-imageWidth)/2,y=(height-imageHeight)/2;
         g.blit(background(),x,y,0,0,imageWidth,imageHeight,TEXTURE_SIZE,TEXTURE_SIZE);
         drawGauges(g,x,y);
         drawMachineInfo(g,x,y);
         drawButtons(g,x,y,mouseX,mouseY);
+    }
+    private void drawOutputConfig(GuiGraphics g,int mouseX,int mouseY) {
+        int x=(width-124)/2,y=(height-138)/2;
+        g.blit(Generators.id("textures/gui/outputs.png"),x,y,0,0,124,138,256,256);
+        g.drawString(font,Component.translatable("advgenerators.gui.output.title"),x+8,y+6,0xff404040,false);
+        int[][] colors={{0xffc94a4a},{0xff61b34b},{0xff5687d6},{0xffd7b63e},{0xff45bfc2},{0xffa65cc4}};
+        for(int side=0;side<6;side++) {
+            int rowY=y+19+side*19,mode=menu.outputMode(side);
+            g.fill(x+9,rowY+2,x+21,rowY+14,colors[side][0]);
+            int iconU=switch(mode){case 1->37;case 2->21;case 3->69;default->53;};
+            drawAtlasButton(g,x+25,rowY,mouseX,mouseY,20,iconU,35);
+            String modeText=switch(mode){case 1->"Signal";case 2->"No sig";case 3->"Off";default->"Always";};
+            g.drawString(font,modeText,x+44,rowY+5,0xff303030,false);
+            if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER) {
+                drawAtlasButton(g,x+79,rowY,mouseX,mouseY,20,20,35);
+                String selection=switch(menu.outputSelection(side)){case 1->"Cold";case 2->"Hot";default->"Both";};
+                g.drawString(font,selection,x+98,rowY+5,0xff202020,false);
+            } else if(menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
+                drawAtlasButton(g,x+79,rowY,mouseX,mouseY,20,20,35);
+                String limit=switch(menu.outputLimitIndex(side)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";};
+                g.drawString(font,limit,x+98,rowY+5,0xff202020,false);
+            }
+        }
     }
     private void drawButtons(GuiGraphics g,int x,int y,int mouseX,int mouseY) {
         int mx=mouseX-leftPos,my=mouseY-topPos;
@@ -173,12 +215,17 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     }
     private static String signed(double value) { return (value>0?"+":"")+format(value); }
     @Override protected void renderLabels(GuiGraphics g,int x,int y) {
+        if(outputConfigOpen) return;
         g.drawString(font,title,8,5,0xff404040,false);
         if (menu.status() == 0) {
             g.drawString(font,Component.translatable("container.inventory"),8,inventoryLabelY,0xff404040,false);
         } else {
             g.drawString(font,Component.translatable("advgenerators.status."+menu.status()),8,inventoryLabelY,0xffaa2020,false);
         }
+    }
+    @Override public void onClose() {
+        if(outputConfigOpen) outputConfigOpen=false;
+        else super.onClose();
     }
     @Override public void render(GuiGraphics g,int mx,int my,float delta) {
         renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my);
