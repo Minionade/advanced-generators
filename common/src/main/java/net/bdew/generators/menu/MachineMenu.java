@@ -14,7 +14,7 @@ import net.minecraft.world.item.ItemStack;
 /** Server-authoritative menu. All contents and gauges are synchronized by vanilla menu slots/data. */
 public final class MachineMenu extends AbstractContainerMenu {
     private static final int SYNC_CHUNKS = 3;
-    private static final int MACHINE_VALUES = 47;
+    private static final int MACHINE_VALUES = 59;
     private final MachineBlockEntity machine;
     private final ContainerData data;
     private final int[] clientData = new int[MACHINE_VALUES * SYNC_CHUNKS];
@@ -76,6 +76,12 @@ public final class MachineMenu extends AbstractContainerMenu {
                     case 44 -> (int)Math.round(machine.efficiency*100);
                     case 45 -> encodeResource(machine.lastExchangerInputItem, machine.lastExchangerInput);
                     case 46 -> encodeResource(machine.lastExchangerOutputItem, machine.lastExchangerOutput);
+                    case 47,48,49,50 -> {
+                        var buffer=machine.buffers[i-47];
+                        yield buffer.empty()?0:encodeResource(buffer.item,buffer.id);
+                    }
+                    case 51,52,53,54 -> (int)Math.min(Integer.MAX_VALUE,Math.round(machine.buffers[i-51].amount*100));
+                    case 55,56,57,58 -> (int)Math.min(Integer.MAX_VALUE,Math.round(machine.buffers[i-55].capacity*100));
                     default -> 0;
         };
     }
@@ -116,6 +122,20 @@ public final class MachineMenu extends AbstractContainerMenu {
     public int outputSelection(int side) { return value(25+side); }
     public int outputLimitIndex(int side) { return value(31+side); }
     public double bufferFill(int index) { return value(37+index)/1000.0; }
+    public Component bufferResourceName(int index) {
+        int encoded=value(47+index);
+        if(encoded==0)return Component.empty();
+        boolean fluid=(encoded&(1<<30))!=0;
+        int registryId=(encoded&~(1<<30))-1;
+        if(fluid) {
+            var id=BuiltInRegistries.FLUID.getKey(BuiltInRegistries.FLUID.byId(registryId));
+            return Component.translatable("fluid."+id.getNamespace()+"."+id.getPath());
+        }
+        return new ItemStack(BuiltInRegistries.ITEM.byId(registryId)).getHoverName();
+    }
+    public boolean bufferIsFluid(int index) { return (value(47+index)&(1<<30))!=0; }
+    public double bufferAmount(int index) { return value(51+index)/100.0; }
+    public double bufferCapacity(int index) { return value(55+index)/100.0; }
     public double carbonFill() { return value(41)/1000.0; }
     public double heatFill() { return value(42)/1000.0; }
     public double heatLoss() { return value(43)/100.0; }
