@@ -278,10 +278,10 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         };
     }
     private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,String value) {
-        // Sample the complete 16x16 or 32x32 atlas icon and scale it to the
-        // original BdLib info-widget size of 8x8. The overload with separate
-        // source dimensions is public when UVs are normalized floats.
-        g.blit(WIDGETS,x+76,y+row+1,8,8,iconU/(float)TEXTURE_SIZE,iconV/(float)TEXTURE_SIZE,
+        // The public source-region overload expects atlas pixel coordinates
+        // (not normalized UVs). Sample the full icon and scale it to BdLib's
+        // original 8x8 info-widget size.
+        g.blit(WIDGETS,x+76,y+row+1,8,8,(float)iconU,(float)iconV,
             iconSize,iconSize,TEXTURE_SIZE,TEXTURE_SIZE);
         g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
     }
