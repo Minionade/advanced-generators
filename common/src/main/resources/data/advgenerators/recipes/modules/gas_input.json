@@ -1,0 +1,39 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "mekanism"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "S S",
+    "FPF",
+    " W "
+  ],
+  "key": {
+    "S": {
+      "tag": "c:ingots/steel"
+    },
+    "F": {
+      "item": "advgenerators:iron_frame"
+    },
+    "W": {
+      "item": "advgenerators:iron_tubing"
+    },
+    "P": {
+      "item": "minecraft:piston"
+    }
+  },
+  "result": {
+    "id": "advgenerators:gas_input"
+  }
+}
