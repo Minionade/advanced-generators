@@ -61,8 +61,10 @@ public final class MachineBlock extends BaseEntityBlock {
         }
         super.onRemove(state, level, pos, next, moving);
     }
-    @Override protected boolean isSignalSource(BlockState state) { return kind == MachineKind.SENSOR; }
-    @Override public boolean canConnectRedstone(BlockState state, BlockGetter level, BlockPos pos, Direction side) {
+    @Override protected boolean isSignalSource(BlockState state) {
+        // Redstone wire treats signal sources as connectable endpoints. These
+        // blocks can accept control/output configuration signals, while only
+        // sensors actually emit a non-zero signal in getSignal below.
         return kind == MachineKind.CONTROL || kind == MachineKind.SENSOR || kind.output();
     }
     @Override protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
