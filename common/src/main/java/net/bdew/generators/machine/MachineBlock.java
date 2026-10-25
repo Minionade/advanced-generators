@@ -62,6 +62,9 @@ public final class MachineBlock extends BaseEntityBlock {
         super.onRemove(state, level, pos, next, moving);
     }
     @Override protected boolean isSignalSource(BlockState state) { return kind == MachineKind.SENSOR; }
+    @Override public boolean canConnectRedstone(BlockState state, BlockGetter level, BlockPos pos, Direction side) {
+        return kind == MachineKind.CONTROL || kind == MachineKind.SENSOR || kind.output();
+    }
     @Override protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
         return kind == MachineKind.SENSOR && state.getValue(BlockStateProperties.POWERED) && direction == state.getValue(BlockStateProperties.FACING).getOpposite() ? 15 : 0;
     }
