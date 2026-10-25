@@ -34,6 +34,8 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public double maxOutput, heat, carbon, burnTime, rpm, energyFraction;
     public double generationRate, consumptionRate, processRate, heatLossRate;
     public double heatDeltaRate;
+    public ResourceLocation lastExchangerInput, lastExchangerOutput;
+    public boolean lastExchangerInputItem, lastExchangerOutputItem;
     public int turbines, heatingChambers, mixingChambers, exchangers;
     public double inertia = 1, efficiency = 1.1;
     public int controlAction, sensorMetric, sensorCondition;
@@ -42,6 +44,11 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public final long[] outputLimit = new long[6];
     private final double[] steamHistory = new double[20];
     private int steamIndex;
+    private final RollingAverage generationAverage = new RollingAverage();
+    private final RollingAverage consumptionAverage = new RollingAverage();
+    private final RollingAverage processAverage = new RollingAverage();
+    private final RollingAverage heatLossAverage = new RollingAverage();
+    private final RollingAverage heatDeltaAverage = new RollingAverage();
     private MultiblockNetwork cachedNetwork;
     private long networkRevision = -1, networkTick = -1;
     public MachineBlockEntity(BlockPos pos, BlockState state) {
@@ -84,6 +91,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
                     case EXCHANGER_CONTROLLER -> machine.tickExchanger();
                     default -> {}
                 }
+                machine.sampleRates();
                 machine.setChanged();
             }
         } else if (machine.kind().output() && network.error() == 0) TransferPlatform.push(machine);
@@ -94,6 +102,26 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
                 level.updateNeighborsAt(pos, state.getBlock());
             }
         }
+    }
+    private void sampleRates() {
+        generationRate = generationAverage.update(generationRate);
+        consumptionRate = consumptionAverage.update(consumptionRate);
+        processRate = processAverage.update(processRate);
+        heatLossRate = heatLossAverage.update(heatLossRate);
+        heatDeltaRate = heatDeltaAverage.update(heatDeltaRate);
+    }
+    private static final class RollingAverage {
+        private final double[] values = new double[20];
+        private int index;
+        private double total;
+        double update(double value) {
+            total += value - values[index];
+            values[index] = value;
+            index = (index + 1) % values.length;
+            return total / values.length;
+        }
+        double average() { return total / values.length; }
+        void clear() { Arrays.fill(values, 0); index = 0; total = 0; }
     }
     public void recalculate() {
         var c = GeneratorConfig.INSTANCE;
@@ -189,26 +217,40 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         if (id == null) return null;
         return recipes(type).stream().map(RecipeHolder::value).filter(r -> r.matchesInput(item,id,patch)).findFirst().orElse(null);
     }
-    private double exchange(ResourceBuffer input, ResourceBuffer output, String type, double budget) {
-        if (input.empty()) return 0;
-        var r = exchangerRecipe(type,input.item,input.id,input.components); if (r == null) return 0;
+    private record Exchange(double heat, double input, double output) {}
+    private Exchange exchange(ResourceBuffer input, ResourceBuffer output, String type, double budget) {
+        if (input.empty()) return new Exchange(0,0,0);
+        var r = exchangerRecipe(type,input.item,input.id,input.components); if (r == null) return new Exchange(0,0,0);
         double space = output.insert(r.outputItem(),r.outputId(),DataComponentPatch.EMPTY,Math.max(0,budget*r.outPerHeat()),true);
         double hu = EngineMath.heatTransfer(budget,input.amount,space,r.inPerHeat(),r.outPerHeat());
-        if (hu > 0) { input.extract(hu*r.inPerHeat(),false); output.insert(r.outputItem(),r.outputId(),DataComponentPatch.EMPTY,hu*r.outPerHeat(),false); }
-        return hu;
+        if (hu <= 0) return new Exchange(0,0,0);
+        double inputAmount = input.extract(hu*r.inPerHeat(),false);
+        double outputAmount = output.insert(r.outputItem(),r.outputId(),DataComponentPatch.EMPTY,hu*r.outPerHeat(),false);
+        return new Exchange(hu,inputAmount,outputAmount);
     }
     private void tickExchanger() {
         var c = GeneratorConfig.INSTANCE; boolean enabled = control(4,true);
+        consumptionRate = processRate = 0;
         if (enabled && heat > c.exchangerStartHeat) {
-            double hu = exchange(buffers[1],buffers[2],"exchanger_cooling",Math.min(heat-c.exchangerStartHeat,exchangers*c.exchangerTransfer));
-            heat -= hu; processRate = hu;
+            Exchange transfer = exchange(buffers[1],buffers[2],"exchanger_cooling",Math.min(heat-c.exchangerStartHeat,exchangers*c.exchangerTransfer));
+            heat -= transfer.heat(); processRate = transfer.output();
+            if (transfer.output() > 0) {
+                if (lastExchangerOutput == null || !lastExchangerOutput.equals(buffers[2].id) || lastExchangerOutputItem != buffers[2].item) processAverage.clear();
+                lastExchangerOutput = buffers[2].id; lastExchangerOutputItem = buffers[2].item;
+            }
         }
         double beforeLoss=heat;
         heat *= 1-c.exchangerDecay;
         heatLossRate=beforeLoss-heat;
         if (enabled && heat < c.exchangerMaxHeat) {
-            double hu = exchange(buffers[0],buffers[3],"exchanger_heating",Math.min(c.exchangerMaxHeat-heat,exchangers*c.exchangerTransfer));
-            heat += hu; consumptionRate = hu;
+            ResourceLocation inputId = buffers[0].id;
+            boolean inputItem = buffers[0].item;
+            Exchange transfer = exchange(buffers[0],buffers[3],"exchanger_heating",Math.min(c.exchangerMaxHeat-heat,exchangers*c.exchangerTransfer));
+            heat += transfer.heat(); consumptionRate = transfer.input();
+            if (transfer.input() > 0) {
+                if (lastExchangerInput == null || !lastExchangerInput.equals(inputId) || lastExchangerInputItem != inputItem) consumptionAverage.clear();
+                lastExchangerInput = inputId; lastExchangerInputItem = inputItem;
+            }
         }
     }
     /** Actions: disabled, fuel, steam, generation, exchange, heating, mixing. Enable wins over disable. */
@@ -263,7 +305,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             case 6 -> rpm/GeneratorConfig.INSTANCE.maxRpm;
             case 7 -> heat/(kind() == MachineKind.SYNGAS_CONTROLLER ? GeneratorConfig.INSTANCE.syngasMaxHeat : GeneratorConfig.INSTANCE.exchangerMaxHeat);
             case 8 -> carbon/GeneratorConfig.INSTANCE.syngasCapacity;
-            case 9 -> maxOutput == 0 ? 0 : generationRate/maxOutput;
+            case 9 -> maxOutput == 0 ? 0 : generationAverage.average()/maxOutput;
             default -> 0;
         };
     }
@@ -286,20 +328,35 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             return switch (sensorCondition) {
                 case 0 -> value <= 0;
                 case 1 -> value > 0 && (metric != 7 || value < midpoint);
-                case 2 -> value >= midpoint;
+                case 2 -> metric == 9 ? value > midpoint : value >= midpoint;
+                default -> value >= 1;
+            };
+        }
+        if (kind() == MachineKind.EXCHANGER_CONTROLLER && metric >= 2 && metric <= 5) {
+            ResourceBuffer buffer = buffers[metric - 2];
+            return switch (sensorCondition) {
+                case 0 -> buffer.empty();
+                case 1 -> !buffer.empty() && buffer.item;
+                case 2 -> !buffer.empty() && !buffer.item;
+                case 3 -> value >= .05;
+                case 4 -> value >= .25;
+                case 5 -> value >= .5;
+                case 6 -> value >= .75;
+                case 7 -> value >= .95;
+                case 8 -> value < 1;
                 default -> value >= 1;
             };
         }
         return switch (sensorCondition) {
             case 0 -> value <= 0;
             case 1 -> value > 0;
-            case 2 -> value > .05;
-            case 3 -> value > .25;
-            case 4 -> value > .5;
-            case 5 -> value > .75;
-            case 6 -> value > .95;
-            case 7 -> value >= 1;
-            default -> value < 1;
+            case 2 -> value >= .05;
+            case 3 -> value >= .25;
+            case 4 -> value >= .5;
+            case 5 -> value >= .75;
+            case 6 -> value >= .95;
+            case 7 -> value < 1;
+            default -> value >= 1;
         };
     }
 
@@ -320,7 +377,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             case FUEL_TURBINE_CONTROLLER -> new int[]{1, 2, 9}; // power, fuel, generation
             case STEAM_TURBINE_CONTROLLER -> new int[]{1, 2, 6}; // power, steam, speed
             case SYNGAS_CONTROLLER -> new int[]{2, 4, 3, 8, 7}; // water, gas, steam, carbon, heat
-            case EXCHANGER_CONTROLLER -> new int[]{2, 5, 3, 4, 7}; // hot in/out, cold in/out, heat
+            case EXCHANGER_CONTROLLER -> new int[]{2, 4, 3, 5, 7}; // hot in/out, cold in/out, heat
             default -> new int[0];
         };
         return choices[selection - 1];
@@ -331,12 +388,13 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             case FUEL_TURBINE_CONTROLLER -> new int[]{1, 2, 9};
             case STEAM_TURBINE_CONTROLLER -> new int[]{1, 2, 6};
             case SYNGAS_CONTROLLER -> new int[]{2, 4, 3, 8, 7};
-            case EXCHANGER_CONTROLLER -> new int[]{2, 5, 3, 4, 7};
+            case EXCHANGER_CONTROLLER -> new int[]{2, 4, 3, 5, 7};
             default -> new int[0];
         };
         if (selection < 1 || selection > choices.length) return 9;
         int metric = choices[selection - 1];
-        return metric == 6 || metric == 7 || metric == 9 ? 4 : 9;
+        if (metric == 6 || metric == 7 || metric == 9) return 4;
+        return controller == MachineKind.EXCHANGER_CONTROLLER ? 10 : 9;
     }
 
     public static int[] controlActions(MachineKind controller) {
@@ -378,6 +436,9 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         tag.put("inventory",inventory.createTag(registries));
         tag.putInt("action",controlAction); tag.putBoolean("high",controlHigh); tag.putInt("metric",sensorMetric); tag.putInt("condition",sensorCondition);
         tag.putIntArray("outputMode",outputMode); tag.putIntArray("outputSelection",outputSelection); tag.putLongArray("outputLimit",outputLimit);
+        if (lastExchangerInput != null) tag.putString("lastExchangerInput",lastExchangerInput.toString());
+        if (lastExchangerOutput != null) tag.putString("lastExchangerOutput",lastExchangerOutput.toString());
+        tag.putBoolean("lastExchangerInputItem",lastExchangerInputItem); tag.putBoolean("lastExchangerOutputItem",lastExchangerOutputItem);
     }
     private static double finite(CompoundTag tag,String key) { double v = tag.getDouble(key); return Double.isFinite(v) ? Math.max(0,v) : 0; }
     @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
@@ -386,8 +447,11 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         for(int i=0;i<4;i++) { buffers[i].capacity = Double.MAX_VALUE; buffers[i].load(tag.getCompound("buffer"+i),registries); }
         inventory.clearContent(); inventory.fromTag(tag.getList("inventory",Tag.TAG_COMPOUND),registries);
         controlAction=Math.clamp(tag.getInt("action"),0,6); controlHigh=!tag.contains("high") || tag.getBoolean("high");
-        sensorMetric=Math.clamp(tag.getInt("metric"),0,9); sensorCondition=Math.clamp(tag.getInt("condition"),0,8);
+        sensorMetric=Math.clamp(tag.getInt("metric"),0,9); sensorCondition=Math.clamp(tag.getInt("condition"),0,9);
         int[] modes=tag.getIntArray("outputMode"), selections=tag.getIntArray("outputSelection"); long[] limits=tag.getLongArray("outputLimit");
+        lastExchangerInput=ResourceLocation.tryParse(tag.getString("lastExchangerInput"));
+        lastExchangerOutput=ResourceLocation.tryParse(tag.getString("lastExchangerOutput"));
+        lastExchangerInputItem=tag.getBoolean("lastExchangerInputItem"); lastExchangerOutputItem=tag.getBoolean("lastExchangerOutputItem");
         for(int i=0;i<6;i++) { outputMode[i]=i<modes.length?Math.clamp(modes[i],0,3):0; outputSelection[i]=i<selections.length?Math.clamp(selections[i],0,2):0; outputLimit[i]=i<limits.length?Math.clamp(limits[i],1,Integer.MAX_VALUE):Integer.MAX_VALUE; }
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { var tag=new CompoundTag();saveAdditional(tag,registries);return tag; }

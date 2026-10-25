@@ -7,6 +7,8 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /** Shared renderer for the original machine-specific Advanced Generators screens. */
 public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
@@ -97,6 +99,14 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         } else if(kind==MachineKind.SENSOR) {
             drawTextureButton(g,x+53,y+37,mx,my,sensorIcon());
             drawTextureButton(g,x+71,y+37,mx,my,conditionIcon());
+            var controller=menu.machine().controller();
+            if(controller!=null&&controller.kind()==MachineKind.EXCHANGER_CONTROLLER) {
+                int metric=controller.sensorMetricFor(menu.sensorMetric());
+                if(metric>=2&&metric<=5&&menu.sensorCondition()==1)
+                    g.renderItem(new ItemStack(Items.COBBLESTONE),x+71,y+37);
+                else if(metric>=2&&metric<=5&&menu.sensorCondition()==2)
+                    g.renderItem(new ItemStack(Items.WATER_BUCKET),x+71,y+37);
+            }
             drawAtlasButton(g,x+107,y+37,mx,my,20,menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?37:21,35);
         }
     }
@@ -113,7 +123,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         var controller=menu.machine().controller();
         if(controller==null||menu.sensorMetric()==0)return Generators.id("textures/sensor/disabled.png");
         String[] choices=switch(controller.kind()) {
-            case FUEL_TURBINE_CONTROLLER -> new String[]{"power","tank/fuel","power"};
+            case FUEL_TURBINE_CONTROLLER -> new String[]{"power","tank/fuel","turbine/turbine"};
             case STEAM_TURBINE_CONTROLLER -> new String[]{"power","tank/steam","turbine/turbine"};
             case SYNGAS_CONTROLLER -> new String[]{"tank/water","tank/fuel","tank/steam","tank/carbon","heat/heat"};
             case EXCHANGER_CONTROLLER -> new String[]{"tank/hot_in","tank/hot_out","tank/cold_in","tank/cold_out","heat/heat"};
@@ -127,9 +137,11 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         if(controller==null||menu.sensorMetric()==0)return Generators.id("textures/sensor/null.png");
         int metric=controller.sensorMetricFor(menu.sensorMetric());
         String name;
-        if(metric==6) name=switch(menu.sensorCondition()){case 0->"turbine/stopped";case 1->"turbine/low";case 2->"turbine/med";default->"turbine/high";};
+        if(metric==6 || metric==9) name=switch(menu.sensorCondition()){case 0->"turbine/stopped";case 1->"turbine/low";case 2->"turbine/med";default->"turbine/high";};
         else if(metric==7) name=switch(menu.sensorCondition()){case 0->"heat/cold";case 1->"heat/low";case 2->"heat/med";default->"heat/high";};
-        else name=switch(menu.sensorCondition()){case 0->"fill/empty";case 1->"fill/not_empty";case 2->"fill/5";case 3->"fill/25";case 4->"fill/50";case 5->"fill/75";case 6->"fill/95";case 7->"fill/full";default->"fill/not_full";};
+        else if(controller.kind()==MachineKind.EXCHANGER_CONTROLLER && metric>=2 && metric<=5)
+            name=switch(menu.sensorCondition()){case 0->"fill/empty";case 1,2->"fill/empty";case 3->"fill/5";case 4->"fill/25";case 5->"fill/50";case 6->"fill/75";case 7->"fill/95";case 8->"fill/not_full";default->"fill/full";};
+        else name=switch(menu.sensorCondition()){case 0->"fill/empty";case 1->"fill/not_empty";case 2->"fill/5";case 3->"fill/25";case 4->"fill/50";case 5->"fill/75";case 6->"fill/95";case 7->"fill/not_full";default->"fill/full";};
         return Generators.id("textures/sensor/"+name+".png");
     }
     private void drawGauges(GuiGraphics g,int x,int y) {
@@ -183,8 +195,8 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             drawInfo(g,x,y,21,format(menu.heat())+" HU");
             drawInfo(g,x,y,32,"Max "+format(menu.output())+" HU/t");
             drawInfo(g,x,y,43,"Loss "+format(menu.heatLoss())+" HU/t");
-            drawInfo(g,x,y,54,"Hot in "+format(menu.consumption())+" HU/t");
-            drawInfo(g,x,y,65,"Cold out "+format(menu.process())+" HU/t");
+            drawInfo(g,x,y,54,flowText(menu.exchangerInputName(),menu.consumption(),menu.exchangerInputIsFluid()));
+            drawInfo(g,x,y,65,flowText(menu.exchangerOutputName(),menu.process(),menu.exchangerOutputIsFluid()));
         } else if(machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER || machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
             drawInfo(g,x,y,21,menu.turbines()+" turbines");
             drawInfo(g,x,y,32,"Peak "+format(menu.output())+" FE/t");
@@ -200,15 +212,33 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+72,0xff404040,false);
         } else if(machine.kind()==MachineKind.SENSOR) {
             g.drawString(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),x+8,y+61,0xff404040,false);
-            g.drawString(font,Component.translatable("advgenerators.sensor.condition."+menu.sensorCondition()),x+8,y+72,0xff404040,false);
+            g.drawString(font,sensorConditionText(controller),x+8,y+72,0xff404040,false);
         }
     }
     private String sensorControllerId() {
         var controller = menu.machine().controller();
         return controller == null ? "none" : controller.kind().id();
     }
+    private Component sensorConditionText(net.bdew.generators.machine.MachineBlockEntity controller) {
+        if (controller != null && controller.kind() == MachineKind.EXCHANGER_CONTROLLER) {
+            int metric = controller.sensorMetricFor(menu.sensorMetric());
+            if (metric >= 2 && metric <= 5)
+                return Component.translatable("advgenerators.sensor.condition.resource." + menu.sensorCondition());
+        }
+        if (controller != null && controller.kind() == MachineKind.FUEL_TURBINE_CONTROLLER
+                && controller.sensorMetricFor(menu.sensorMetric()) == 9)
+            return Component.translatable("advgenerators.sensor.condition.generation." + menu.sensorCondition());
+        return Component.translatable("advgenerators.sensor.condition." + menu.sensorCondition());
+    }
     private void drawInfo(GuiGraphics g,int x,int y,int row,String value) {
         g.drawString(font,Component.literal(value),x+93,y+row,0xff404040,false);
+    }
+    private void drawInfo(GuiGraphics g,int x,int y,int row,Component value) {
+        g.drawString(font,value,x+75,y+row,0xff404040,false);
+    }
+    private static Component flowText(Component resource, double rate, boolean fluid) {
+        if (rate <= 0) return resource;
+        return resource.copy().append(Component.literal(" "+format(rate)+(fluid ? " mB/t" : "/t")));
     }
     private static String format(double value) {
         return String.format(java.util.Locale.ROOT,"%.1f",value).replaceAll("\\.0$","");
@@ -257,7 +287,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,53,37)) {
             g.renderTooltip(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),mx,my);
         } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,71,37)) {
-            g.renderTooltip(font,Component.translatable("advgenerators.sensor.condition."+menu.sensorCondition()),mx,my);
+            g.renderTooltip(font,sensorConditionText(menu.machine().controller()),mx,my);
         } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,107,37)) {
             g.renderTooltip(font,Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"),mx,my);
         }

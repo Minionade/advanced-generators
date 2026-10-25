@@ -61,7 +61,7 @@
   "advgenerators.sensor.condition.4": "Over 50%",
   "advgenerators.sensor.condition.5": "Over 75%",
   "advgenerators.sensor.condition.6": "Over 95%",
-  "advgenerators.sensor.condition.7": "Full",
-  "advgenerators.sensor.condition.8": "Not full",
+  "advgenerators.sensor.condition.7": "Not full",
+  "advgenerators.sensor.condition.8": "Full",
   "advgenerators.sensor.metric.none.0": "No connected controller"
 }

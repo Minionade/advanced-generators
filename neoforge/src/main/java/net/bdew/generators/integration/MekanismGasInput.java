@@ -37,8 +37,17 @@ public final class MekanismGasInput {
             return recipes().stream().map(net.minecraft.world.item.crafting.RecipeHolder::value)
                 .filter(recipe -> recipe.hasChemicalToFluid() && recipe.test(input)).findFirst().orElse(null);
         }
-        @Override public int getChemicalTanks() { return core() == null ? 0 : 1; }
-        @Override public ChemicalStack getChemicalInTank(int tank) { return ChemicalStack.EMPTY; }
+        @Override public int getChemicalTanks() {
+            MachineBlockEntity core = core();
+            return core == null ? 0 : core.inputSlots().length;
+        }
+        @Override public ChemicalStack getChemicalInTank(int tank) {
+            MachineBlockEntity core = core();
+            int slot = slot(core, tank);
+            if (slot < 0 || core.buffers[slot].empty() || core.buffers[slot].item) return ChemicalStack.EMPTY;
+            return chemicalFromFluid(new FluidStack(core.buffers[slot].fluid(),
+                (int)Math.min(Integer.MAX_VALUE, core.buffers[slot].amount)));
+        }
         @Override public void setChemicalInTank(int tank, ChemicalStack stack) {
             if (!stack.isEmpty() && !insertChemical(tank, stack, Action.EXECUTE).isEmpty())
                 throw new IllegalStateException("Mekanism chemical did not fit in Advanced Generators input");
@@ -46,28 +55,15 @@ public final class MekanismGasInput {
         @Override public long getChemicalTankCapacity(int tank) {
             MachineBlockEntity core = core();
             if (core == null) return 0;
-            long capacity = 0;
-            for (RotaryRecipe recipe : recipes().stream().map(net.minecraft.world.item.crafting.RecipeHolder::value)
-                    .filter(RotaryRecipe::hasChemicalToFluid).toList()) {
-                FluidStack output = recipe.getFluidOutputDefinition().stream().findFirst().orElse(FluidStack.EMPTY);
-                if (output.isEmpty()) continue;
-                double fluidCapacity = 0;
-                ResourceLocation outputId = BuiltInRegistries.FLUID.getKey(output.getFluid());
-                for (int slot : core.inputSlots()) if (core.accepts(slot, false, outputId, DataComponentPatch.EMPTY))
-                    fluidCapacity += Math.max(0, core.buffers[slot].capacity);
-                long inputPerBatch = recipe.getChemicalInput().amount();
-                long outputPerBatch = output.getAmount();
-                if (outputPerBatch > 0) capacity = Math.max(capacity,
-                    (long)Math.floor(fluidCapacity * inputPerBatch / outputPerBatch));
-            }
-            return capacity;
+            int slot = slot(core, tank);
+            return slot < 0 ? 0 : (long)Math.min(Long.MAX_VALUE, core.buffers[slot].capacity);
         }
         @Override public boolean isValid(int tank, ChemicalStack stack) {
             RotaryRecipe recipe = conversion(stack);
             MachineBlockEntity core = core();
             if (recipe == null || core == null) return false;
             FluidStack output = recipe.getFluidOutput(stack);
-            return !output.isEmpty() && accepts(core, output.getFluid());
+            return !output.isEmpty() && accepts(core, tank, output.getFluid());
         }
         @Override public ChemicalStack insertChemical(int tank, ChemicalStack stack, Action action) {
             if (stack.isEmpty()) return ChemicalStack.EMPTY;
@@ -76,43 +72,53 @@ public final class MekanismGasInput {
             if (recipe == null || core == null) return stack;
             FluidStack output = recipe.getFluidOutput(stack);
             if (output.isEmpty()) return stack;
-            long inputPerBatch = recipe.getChemicalInput().amount();
-            long outputPerBatch = output.getAmount();
-            if (inputPerBatch <= 0 || outputPerBatch <= 0) return stack;
-            long batches = stack.getAmount() / inputPerBatch;
-            if (batches <= 0) return stack;
-            long requested;
-            try { requested = Math.multiplyExact(batches, outputPerBatch); }
-            catch (ArithmeticException overflow) { requested = Integer.MAX_VALUE; batches = requested / outputPerBatch; }
-            requested = Math.min(requested, Integer.MAX_VALUE);
+            int requested = (int)Math.min(Integer.MAX_VALUE, stack.getAmount());
+            output.setAmount(requested);
             ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(output.getFluid());
-            double available = insertFluid(core, fluidId, output, requested, true);
-            long acceptedBatches = Math.min(batches, (long)Math.floor(available / outputPerBatch));
-            if (acceptedBatches <= 0) return stack;
-            long acceptedFluid = acceptedBatches * outputPerBatch;
-            if (action.execute()) insertFluid(core, fluidId, output, acceptedFluid, false);
-            long consumed = acceptedBatches * inputPerBatch;
+            int slot = slot(core, tank);
+            if (slot < 0 || !core.accepts(slot, false, fluidId, DataComponentPatch.EMPTY)) return stack;
+            double accepted = core.insertResource(slot, false, fluidId, DataComponentPatch.EMPTY, requested, !action.execute());
+            int consumed = Math.min(requested, (int)Math.floor(accepted));
             return consumed == 0 ? stack : stack.copyWithAmount(stack.getAmount() - consumed);
         }
-        @Override public ChemicalStack extractChemical(int tank, long amount, Action action) { return ChemicalStack.EMPTY; }
-
-        private static double insertFluid(MachineBlockEntity core, ResourceLocation id, FluidStack output,
-                                          long amount, boolean simulate) {
-            double accepted = 0;
-            for (int slot : core.inputSlots()) {
-                if (!core.accepts(slot, false, id, DataComponentPatch.EMPTY)) continue;
-                accepted += core.insertResource(slot, false, id, DataComponentPatch.EMPTY,
-                    amount - accepted, simulate);
-                if (accepted >= amount) break;
-            }
-            return accepted;
+        @Override public ChemicalStack extractChemical(int tank, long amount, Action action) {
+            MachineBlockEntity core = core();
+            int slot = slot(core, tank);
+            if (slot < 0) return ChemicalStack.EMPTY;
+            var buffer = core.buffers[slot];
+            if (buffer.empty() || buffer.item) return ChemicalStack.EMPTY;
+            int requested = (int)Math.min(Integer.MAX_VALUE, Math.min(amount, Math.floor(buffer.amount)));
+            if (requested <= 0) return ChemicalStack.EMPTY;
+            var fluid = new FluidStack(buffer.fluid(), requested);
+            ChemicalStack converted = chemicalFromFluid(fluid);
+            if (converted.isEmpty()) return ChemicalStack.EMPTY;
+            double extracted = buffer.extract(requested, !action.execute());
+            if (extracted <= 0) return ChemicalStack.EMPTY;
+            converted.setAmount((long)Math.floor(extracted));
+            return converted;
         }
 
-        private static boolean accepts(MachineBlockEntity core, net.minecraft.world.level.material.Fluid fluid) {
+        private ChemicalStack chemicalFromFluid(FluidStack fluid) {
+            if (fluid.isEmpty()) return ChemicalStack.EMPTY;
+            for (var holder : recipes()) {
+                RotaryRecipe recipe = holder.value();
+                if (recipe.hasFluidToChemical() && recipe.test(fluid)) {
+                    ChemicalStack result = recipe.getChemicalOutput(fluid);
+                    result.setAmount(fluid.getAmount());
+                    return result;
+                }
+            }
+            return ChemicalStack.EMPTY;
+        }
+        private static int slot(MachineBlockEntity core, int tank) {
+            if (core == null) return -1;
+            int[] slots = core.inputSlots();
+            return tank < 0 || tank >= slots.length ? -1 : slots[tank];
+        }
+        private static boolean accepts(MachineBlockEntity core, int tank, net.minecraft.world.level.material.Fluid fluid) {
             ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid);
-            for (int slot : core.inputSlots())
-                if (core.accepts(slot, false, id, DataComponentPatch.EMPTY)) return true;
-            return false;
+            int slot = slot(core, tank);
+            return slot >= 0 && core.accepts(slot, false, id, DataComponentPatch.EMPTY);
         }
     }
 }

@@ -5,7 +5,7 @@ public enum MachineKind {
     SYNGAS_CONTROLLER("controller", 0), EXCHANGER_CONTROLLER("controller", 0),
     FE_OUTPUT("powerOutput", 0), EU_OUTPUT_LV("powerOutput", 1), EU_OUTPUT_MV("powerOutput", 2),
     EU_OUTPUT_HV("powerOutput", 3), EU_OUTPUT_EV("powerOutput", 4), EU_OUTPUT_IV("powerOutput", 5),
-    FLUID_INPUT("fluidInput", 0), GAS_INPUT("gasInput", 0), FUEL_TANK("fuelTank", 0),
+    FLUID_INPUT("fluidInput", 0), GAS_INPUT("fluidInput", 0), FUEL_TANK("fuelTank", 0),
     TURBINE_TIER1("turbine", 1), TURBINE_TIER2("turbine", 2), TURBINE_TIER3("turbine", 3),
     TURBINE_TIER4("turbine", 4), TURBINE_TIER5("turbine", 5),
     POWER_CAPACITOR_TIER1("powerCapacitor", 1), POWER_CAPACITOR_TIER2("powerCapacitor", 2), POWER_CAPACITOR_TIER3("powerCapacitor", 3),
