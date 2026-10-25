@@ -111,7 +111,24 @@ public final class TransferPlatformImpl {
         private final MachineBlockEntity core;NativeCarbonInventory(MachineBlockEntity core){this.core=core;}
         public int getSlots(){return core.inventory.getContainerSize();}
         public ItemStack getStackInSlot(int i){return core.inventory.getItem(i);}
-        public ItemStack insertItem(int i,ItemStack stack,boolean simulate){if(stack.isEmpty()||core.carbonValue(stack)<=0)return stack;return ItemHandlerHelper.insertItem(core.inventory,i,stack,simulate);}
+        public ItemStack insertItem(int i,ItemStack stack,boolean simulate){
+            if(stack.isEmpty()||core.carbonValue(stack)<=0||!core.inventory.canPlaceItem(i,stack))return stack;
+            ItemStack existing=core.inventory.getItem(i);
+            if(!existing.isEmpty()&&!ItemHandlerHelper.canItemStacksStack(existing,stack))return stack;
+            int current=existing.isEmpty()?0:existing.getCount();
+            int limit=Math.min(core.inventory.getMaxStackSize(),stack.getMaxStackSize());
+            int accepted=Math.min(stack.getCount(),limit-current);
+            if(accepted<=0)return stack;
+            if(!simulate){
+                ItemStack updated=stack.copy();
+                updated.setCount(current+accepted);
+                core.inventory.setItem(i,updated);
+                core.setChanged();
+            }
+            ItemStack remainder=stack.copy();
+            remainder.shrink(accepted);
+            return remainder;
+        }
         public ItemStack extractItem(int i,int amount,boolean simulate){return ItemStack.EMPTY;}
         public int getSlotLimit(int i){return 64;}
         public boolean isItemValid(int i,ItemStack stack){return core.carbonValue(stack)>0;}
