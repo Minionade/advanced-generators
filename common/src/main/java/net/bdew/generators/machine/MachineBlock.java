@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.state.*;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class MachineBlock extends BaseEntityBlock {
+public class MachineBlock extends BaseEntityBlock {
     public final MachineKind kind;
     public MachineBlock(MachineKind kind) {
         super(Properties.of().mapColor(net.minecraft.world.level.material.MapColor.METAL).strength(3.5F).sound(SoundType.METAL).requiresCorrectToolForDrops());
@@ -29,10 +29,30 @@ public final class MachineBlock extends BaseEntityBlock {
         if (kind.hasPoweredState()) state = state.setValue(BlockStateProperties.POWERED, false);
         registerDefaultState(state);
     }
-    @Override protected MapCodec<? extends BaseEntityBlock> codec() { return simpleCodec(p -> new MachineBlock(kind)); }
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        if (kind.hasFacing()) builder.add(BlockStateProperties.FACING);
-        if (kind.hasPoweredState()) builder.add(BlockStateProperties.POWERED);
+    @Override protected MapCodec<? extends BaseEntityBlock> codec() { return simpleCodec(p -> create(kind)); }
+    // Block invokes this override from its constructor, before this.kind has
+    // been assigned. Use concrete property-shape subclasses so these methods
+    // never read instance fields during superclass construction.
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {}
+
+    public static MachineBlock create(MachineKind kind) {
+        if (kind.hasFacing() && kind.hasPoweredState()) return new FacingPowered(kind);
+        if (kind.hasFacing()) return new Facing(kind);
+        if (kind.hasPoweredState()) return new Powered(kind);
+        return new MachineBlock(kind);
+    }
+
+    private static final class Facing extends MachineBlock {
+        private Facing(MachineKind kind) { super(kind); }
+        @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(BlockStateProperties.FACING); }
+    }
+    private static final class Powered extends MachineBlock {
+        private Powered(MachineKind kind) { super(kind); }
+        @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(BlockStateProperties.POWERED); }
+    }
+    private static final class FacingPowered extends MachineBlock {
+        private FacingPowered(MachineKind kind) { super(kind); }
+        @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(BlockStateProperties.FACING, BlockStateProperties.POWERED); }
     }
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
         return kind.hasFacing() ? defaultBlockState().setValue(BlockStateProperties.FACING, context.getNearestLookingDirection().getOpposite()) : defaultBlockState();
