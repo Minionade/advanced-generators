@@ -39,19 +39,23 @@ public final class TransferPlatformImpl {
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK,type,TransferPlatformImpl::energy);
     }
     public static void push(MachineBlockEntity module) {
-        var level=module.getLevel();var side=module.getBlockState().getValue(BlockStateProperties.FACING);
-        var core=module.controller();if(core==null||!module.outputEnabled(side))return;
-        BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
-        if(module.kind().isEnergyOutput()) {
-            IEnergyStorage dst=level.getCapability(Capabilities.EnergyStorage.BLOCK,target.getBlockPos(),side.getOpposite());if(dst==null||!dst.canReceive())return;
-            int moved=(int)core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
-            if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0)core.extractEnergy(accepted,false);}
-        } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
-            IFluidHandler src=fluids(module,side),dst=level.getCapability(Capabilities.FluidHandler.BLOCK,target.getBlockPos(),side.getOpposite());
-            if(src!=null&&dst!=null)for(int i=0;i<src.getTanks();i++){var stack=src.getFluidInTank(i);if(!stack.isEmpty()){var simulated=src.drain(stack, IFluidHandler.FluidAction.SIMULATE);int accepted=dst.fill(simulated,IFluidHandler.FluidAction.EXECUTE);if(accepted>0)src.drain(accepted,IFluidHandler.FluidAction.EXECUTE);}}
-        } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
-            IItemHandler src=items(module,side),dst=level.getCapability(Capabilities.ItemHandler.BLOCK,target.getBlockPos(),side.getOpposite());
-            if(src!=null&&dst!=null)for(int i=0;i<src.getSlots();i++){var stack=src.extractItem(i,64,true);if(!stack.isEmpty()){var remainder=ItemHandlerHelper.insertItemStacked(dst,stack,false);if(remainder.getCount()<stack.getCount())src.extractItem(i,stack.getCount()-remainder.getCount(),false);}}
+        var level=module.getLevel();
+        var core=module.controller();if(core==null)return;
+        for(Direction side:Direction.values()) {
+            if(module.kind().hasFacing()&&module.getBlockState().getValue(BlockStateProperties.FACING)!=side)continue;
+            if(!module.outputEnabled(side))continue;
+            BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
+            if(module.kind().isEnergyOutput()) {
+                IEnergyStorage dst=level.getCapability(Capabilities.EnergyStorage.BLOCK,target.getBlockPos(),side.getOpposite());if(dst==null||!dst.canReceive())continue;
+                int moved=(int)core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
+                if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0)core.extractEnergy(accepted,false);}
+            } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
+                IFluidHandler src=fluids(module,side),dst=level.getCapability(Capabilities.FluidHandler.BLOCK,target.getBlockPos(),side.getOpposite());
+                if(src!=null&&dst!=null)for(int i=0;i<src.getTanks();i++){var stack=src.getFluidInTank(i);if(!stack.isEmpty()){var simulated=src.drain(stack, IFluidHandler.FluidAction.SIMULATE);int accepted=dst.fill(simulated,IFluidHandler.FluidAction.EXECUTE);if(accepted>0)src.drain(accepted,IFluidHandler.FluidAction.EXECUTE);}}
+            } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
+                IItemHandler src=items(module,side),dst=level.getCapability(Capabilities.ItemHandler.BLOCK,target.getBlockPos(),side.getOpposite());
+                if(src!=null&&dst!=null)for(int i=0;i<src.getSlots();i++){var stack=src.extractItem(i,64,true);if(!stack.isEmpty()){var remainder=ItemHandlerHelper.insertItemStacked(dst,stack,false);if(remainder.getCount()<stack.getCount())src.extractItem(i,stack.getCount()-remainder.getCount(),false);}}
+            }
         }
     }
     public static boolean interact(MachineBlockEntity module,Player player,InteractionHand hand,Direction side) {
@@ -77,14 +81,16 @@ public final class TransferPlatformImpl {
         return new NativeItemHandler(core,core.inputSlots(),true,false);
     }
     public static IEnergyStorage energy(MachineBlockEntity machine,Direction side) {
-        if(!machine.kind().isEnergyOutput())return null;
+        if(!machine.kind().isEnergyOutput()||side==null)return null;
+        if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
         var core=machine.controller();if(core==null)return null;
+        if(!core.outputEnabled(side))return null;
         return new IEnergyStorage(){
-            public int receiveEnergy(int amount,boolean simulate){if(amount<=0)return 0;long accepted=Math.min(amount,Math.max(0,core.energyCapacity-core.energy));if(!simulate&&accepted>0){core.energy+=accepted;core.setChanged();}return(int)accepted;}
-            public int extractEnergy(int amount,boolean simulate){return 0;}
+            public int receiveEnergy(int amount,boolean simulate){return 0;}
+            public int extractEnergy(int amount,boolean simulate){if(amount<=0||!core.outputEnabled(side))return 0;int moved=(int)Math.min(Math.min(amount,core.outputLimit[side.get3DDataValue()]),core.energy);if(!simulate&&moved>0)core.extractEnergy(moved,false);return moved;}
             public int getEnergyStored(){return(int)Math.min(Integer.MAX_VALUE,core.energy);}
             public int getMaxEnergyStored(){return(int)Math.min(Integer.MAX_VALUE,core.energyCapacity);}
-            public boolean canExtract(){return false;}public boolean canReceive(){return true;}
+            public boolean canExtract(){return core.outputEnabled(side)&&core.outputLimit[side.get3DDataValue()]>0;}public boolean canReceive(){return false;}
         };
     }
     private static final class NativeFluidHandler implements IFluidHandler {

@@ -23,7 +23,9 @@ public final class UpgradeKitItem extends Item {
             if (!(BuiltInRegistries.BLOCK.get(recipe.id("to")) instanceof MachineBlock replacement)) return InteractionResult.FAIL;
             if (level.isClientSide) return InteractionResult.SUCCESS;
             var old = level.getBlockState(target);
-            level.setBlock(target, replacement.defaultBlockState().setValue(BlockStateProperties.FACING, old.getValue(BlockStateProperties.FACING)), 3);
+            var replacementState = replacement.defaultBlockState();
+            if (replacement.kind.hasFacing()) replacementState = replacementState.setValue(BlockStateProperties.FACING, old.getValue(BlockStateProperties.FACING));
+            level.setBlock(target, replacementState, 3);
             level.playSound(null, target, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 1, 1);
             if (!player.getAbilities().instabuild) ctx.getItemInHand().shrink(1);
             return InteractionResult.CONSUME;

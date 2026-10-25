@@ -21,4 +21,7 @@ public enum MachineKind {
     public boolean controller() { return category.equals("controller"); }
     public boolean output() { return isEnergyOutput() || this == FLUID_OUTPUT_SELECT || this == ITEM_OUTPUT; }
     public boolean isEnergyOutput() { return category.equals("powerOutput"); }
+    /** Only these legacy blocks stored a facing direction in their block state. */
+    public boolean hasFacing() { return this == SENSOR || name().startsWith("EU_OUTPUT_"); }
+    public boolean hasPoweredState() { return this == CONTROL || this == SENSOR; }
 }

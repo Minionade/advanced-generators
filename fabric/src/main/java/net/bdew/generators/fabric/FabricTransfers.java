@@ -58,23 +58,28 @@ public final class FabricTransfers {
         return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
     }
     public static EnergyStorage energy(MachineBlockEntity machine,Direction side) {
-        if(!machine.kind().isEnergyOutput())return null;
-        var core=machine.controller();return core==null?null:new EnergyBufferStorage(core);
+        if(!machine.kind().isEnergyOutput()||side==null)return null;
+        if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
+        var core=machine.controller();return core==null||!core.outputEnabled(side)?null:new EnergyBufferStorage(core,side);
     }
     public static void push(MachineBlockEntity module) {
-        var level=module.getLevel();var side=module.getBlockState().getValue(BlockStateProperties.FACING);
-        var core=module.controller();if(core==null||!module.outputEnabled(side))return;
-        BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
-        if(module.kind().isEnergyOutput()) {
-            var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)return;
-            long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
-            if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
-        } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
-            var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
-            if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,81000,null);
-        } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
-            var source=items(module,side);var destination=ItemStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
-            if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,64,null);
+        var level=module.getLevel();
+        var core=module.controller();if(core==null)return;
+        for(Direction side:Direction.values()) {
+            if(module.kind().hasFacing()&&module.getBlockState().getValue(BlockStateProperties.FACING)!=side)continue;
+            if(!module.outputEnabled(side))continue;
+            BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
+            if(module.kind().isEnergyOutput()) {
+                var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
+                long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
+                if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
+            } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
+                var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
+                if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,81000,null);
+            } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
+                var source=items(module,side);var destination=ItemStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
+                if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,64,null);
+            }
         }
     }
     public static boolean interact(MachineBlockEntity module,Player player,InteractionHand hand,Direction side) {

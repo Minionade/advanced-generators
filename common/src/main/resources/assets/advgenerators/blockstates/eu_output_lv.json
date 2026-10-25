@@ -1,48 +1,25 @@
 {
   "variants": {
-    "facing=north,powered=false": {
+    "facing=north": {
       "model": "advgenerators:block/eu_output_lv"
     },
-    "facing=north,powered=true": {
-      "model": "advgenerators:block/eu_output_lv"
-    },
-    "facing=east,powered=false": {
+    "facing=east": {
       "model": "advgenerators:block/eu_output_lv",
       "y": 90
     },
-    "facing=east,powered=true": {
-      "model": "advgenerators:block/eu_output_lv",
-      "y": 90
-    },
-    "facing=south,powered=false": {
+    "facing=south": {
       "model": "advgenerators:block/eu_output_lv",
       "y": 180
     },
-    "facing=south,powered=true": {
-      "model": "advgenerators:block/eu_output_lv",
-      "y": 180
-    },
-    "facing=west,powered=false": {
+    "facing=west": {
       "model": "advgenerators:block/eu_output_lv",
       "y": 270
     },
-    "facing=west,powered=true": {
-      "model": "advgenerators:block/eu_output_lv",
-      "y": 270
-    },
-    "facing=up,powered=false": {
+    "facing=up": {
       "model": "advgenerators:block/eu_output_lv",
       "x": 270
     },
-    "facing=up,powered=true": {
-      "model": "advgenerators:block/eu_output_lv",
-      "x": 270
-    },
-    "facing=down,powered=false": {
-      "model": "advgenerators:block/eu_output_lv",
-      "x": 90
-    },
-    "facing=down,powered=true": {
+    "facing=down": {
       "model": "advgenerators:block/eu_output_lv",
       "x": 90
     }

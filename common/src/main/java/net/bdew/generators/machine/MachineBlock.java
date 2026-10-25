@@ -24,11 +24,19 @@ public final class MachineBlock extends BaseEntityBlock {
     public MachineBlock(MachineKind kind) {
         super(Properties.of().mapColor(net.minecraft.world.level.material.MapColor.METAL).strength(3.5F).sound(SoundType.METAL).requiresCorrectToolForDrops());
         this.kind = kind;
-        registerDefaultState(stateDefinition.any().setValue(BlockStateProperties.FACING, Direction.NORTH).setValue(BlockStateProperties.POWERED, false));
+        var state = stateDefinition.any();
+        if (kind.hasFacing()) state = state.setValue(BlockStateProperties.FACING, Direction.NORTH);
+        if (kind.hasPoweredState()) state = state.setValue(BlockStateProperties.POWERED, false);
+        registerDefaultState(state);
     }
     @Override protected MapCodec<? extends BaseEntityBlock> codec() { return simpleCodec(p -> new MachineBlock(kind)); }
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(BlockStateProperties.FACING, BlockStateProperties.POWERED); }
-    @Override public BlockState getStateForPlacement(BlockPlaceContext context) { return defaultBlockState().setValue(BlockStateProperties.FACING, context.getNearestLookingDirection().getOpposite()); }
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        if (kind.hasFacing()) builder.add(BlockStateProperties.FACING);
+        if (kind.hasPoweredState()) builder.add(BlockStateProperties.POWERED);
+    }
+    @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return kind.hasFacing() ? defaultBlockState().setValue(BlockStateProperties.FACING, context.getNearestLookingDirection().getOpposite()) : defaultBlockState();
+    }
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new MachineBlockEntity(pos, state); }
     @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {

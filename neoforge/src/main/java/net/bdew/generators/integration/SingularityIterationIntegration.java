@@ -19,6 +19,8 @@ public final class SingularityIterationIntegration {
         event.registerBlockEntity(EUApi.SIDED, ModContent.MACHINE_ENTITY.get(),
             (machine, side) -> {
                 if (!machine.kind().isEnergyOutput() || side == null || !machine.outputEnabled(side)) return null;
+                if (machine.kind().hasFacing()
+                    && machine.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) != side) return null;
                 MachineBlockEntity core = machine.controller();
                 if (core == null) return null;
                 return new GeneratorEnergy(core, machine.kind(), side);
