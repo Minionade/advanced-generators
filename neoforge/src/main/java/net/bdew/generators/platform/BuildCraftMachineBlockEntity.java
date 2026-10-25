@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.Optional;
 
 /** Native BuildCraft MJ endpoint used only when BCCE is installed. */
-final class BuildCraftMachineBlockEntity extends MachineBlockEntity implements MjPortProvider {
+public final class BuildCraftMachineBlockEntity extends MachineBlockEntity implements MjPortProvider {
     private long outputTick = Long.MIN_VALUE;
     private long outputThisTick;
 
@@ -25,11 +25,11 @@ final class BuildCraftMachineBlockEntity extends MachineBlockEntity implements M
         super(pos, state);
     }
 
-    static MachineBlockEntity create(BlockPos pos, BlockState state) {
+    public static MachineBlockEntity create(BlockPos pos, BlockState state) {
         return new BuildCraftMachineBlockEntity(pos, state);
     }
 
-    static boolean canOutputOn(MachineBlockEntity machine, Direction side) {
+    public static boolean canOutputOn(MachineBlockEntity machine, Direction side) {
         var level = machine.getLevel();
         if (level == null || side == null || !machine.kind().isMjOutput()) return false;
         BlockPos target = machine.getBlockPos().relative(side);
