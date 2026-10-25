@@ -9,6 +9,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import java.util.List;
+import java.util.Optional;
 
 /** Shared renderer for the original machine-specific Advanced Generators screens. */
 public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
@@ -86,7 +88,9 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         }
     }
     private void drawButtons(GuiGraphics g,int x,int y,int mouseX,int mouseY) {
-        int mx=mouseX-leftPos,my=mouseY-topPos;
+        // Button positions below are in screen coordinates, so compare them with
+        // the screen-coordinate mouse position as well.
+        int mx=mouseX,my=mouseY;
         var kind=menu.machine().kind();
         if(kind.controller()) {
             drawAtlasButton(g,x+153,y+19,mx,my,0,85,35);
@@ -188,58 +192,102 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private void drawMachineInfo(GuiGraphics g,int x,int y) {
         var machine=menu.machine();
         if(machine.kind()==MachineKind.SYNGAS_CONTROLLER) {
-            drawInfo(g,x,y,21,"Heat "+signed(menu.heatDelta())+" HU/t");
-            drawInfo(g,x,y,32,"Carbon "+format(menu.consumption())+"/t");
-            drawInfo(g,x,y,43,"Gas "+format(menu.process())+"/t");
+            drawInfo(g,x,y,21,48,106,16,signed(menu.heatDelta())+" HU");
+            drawItemInfo(g,x,y,32,Items.COAL_BLOCK,format(menu.consumption())+"/t");
+            drawInfo(g,x,y,43,64,90,32,format(menu.process())+" mB/t");
         } else if(machine.kind()==MachineKind.EXCHANGER_CONTROLLER) {
-            drawInfo(g,x,y,21,format(menu.heat())+" HU");
-            drawInfo(g,x,y,32,"Max "+format(menu.output())+" HU/t");
-            drawInfo(g,x,y,43,"Loss "+format(menu.heatLoss())+" HU/t");
-            drawInfo(g,x,y,54,flowText(menu.exchangerInputName(),menu.consumption(),menu.exchangerInputIsFluid()));
-            drawInfo(g,x,y,65,flowText(menu.exchangerOutputName(),menu.process(),menu.exchangerOutputIsFluid()));
+            drawInfo(g,x,y,21,96,90,32,format(menu.heat())+" HU");
+            drawInfo(g,x,y,32,48,106,16,format(menu.output())+" HU/t");
+            drawInfo(g,x,y,43,0,122,16,format(menu.heatLoss())+" HU/t");
+            drawInfo(g,x,y,54,64,90,32,format(menu.consumption())+(menu.exchangerInputIsFluid()?" mB/t":"/t"));
+            drawInfo(g,x,y,65,64,90,32,format(menu.process())+(menu.exchangerOutputIsFluid()?" mB/t":"/t"));
         } else if(machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER || machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
-            drawInfo(g,x,y,21,menu.turbines()+" turbines");
-            drawInfo(g,x,y,32,"Peak "+format(menu.output())+" FE/t");
+            drawInfo(g,x,y,21,0,90,32,Integer.toString(menu.turbines()));
+            drawInfo(g,x,y,32,32,106,16,format(menu.output())+" FE/t");
             if (machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER)
-                drawInfo(g,x,y,43,"Efficiency "+format(menu.efficiency()*100)+"%");
+                drawInfo(g,x,y,43,64,90,32,format(menu.consumption())+" mB/t");
             else
-                drawInfo(g,x,y,43,format(menu.rpm())+" RPM");
-            drawInfo(g,x,y,54,"Out "+format(menu.generation())+" FE/t");
-            drawInfo(g,x,y,65,(machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER?"Steam ":"Fuel ")+format(menu.consumption())+"/t");
-        } else if(machine.kind()==MachineKind.CONTROL) {
-            String[] actions={"disabled","useFuel","useSteam","generateEnergy","exchangeHeat","heatWater","mix"};
-            g.drawString(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),x+8,y+61,0xff404040,false);
-            g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+72,0xff404040,false);
-        } else if(machine.kind()==MachineKind.SENSOR) {
-            var controller = menu.machine().controller();
-            g.drawString(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),x+8,y+61,0xff404040,false);
-            g.drawString(font,sensorConditionText(controller),x+8,y+72,0xff404040,false);
+                drawInfo(g,x,y,43,32,122,32,format(menu.rpm())+" RPM");
+            drawInfo(g,x,y,54,48,90,16,format(menu.generation())+" FE/t");
+            drawInfo(g,x,y,65,64,90,32,format(menu.consumption())+" mB/t");
         }
     }
-    private String sensorControllerId() {
-        var controller = menu.machine().controller();
-        return controller == null ? "none" : controller.kind().id();
+    private Component sensorMetricTooltip() {
+        if (menu.machine().controller() == null) return Component.translatable("advgenerators.sensor.disabled");
+        String[] choices=switch(menu.machine().controller().kind()) {
+            case FUEL_TURBINE_CONTROLLER -> new String[]{"power","turbine.fuel","turbine.generation"};
+            case STEAM_TURBINE_CONTROLLER -> new String[]{"power","turbine.steam","turbine.speed"};
+            case SYNGAS_CONTROLLER -> new String[]{"syngas.water","syngas.syngas","syngas.steam","syngas.carbon","syngas.heat"};
+            case EXCHANGER_CONTROLLER -> new String[]{"exchanger.hot.input","exchanger.hot.output","exchanger.cold.input","exchanger.cold.output","exchanger.heat"};
+            default -> new String[0];
+        };
+        int selection=menu.sensorMetric();
+        return selection<1||selection>choices.length?Component.translatable("advgenerators.sensor.disabled"):
+            Component.translatable("advgenerators.sensor."+choices[selection-1]);
     }
     private Component sensorConditionText(net.bdew.generators.machine.MachineBlockEntity controller) {
-        if (controller != null && controller.kind() == MachineKind.EXCHANGER_CONTROLLER) {
-            int metric = controller.sensorMetricFor(menu.sensorMetric());
-            if (metric >= 2 && metric <= 5)
-                return Component.translatable("advgenerators.sensor.condition.resource." + menu.sensorCondition());
+        if(controller==null)return Component.translatable("advgenerators.sensor.param.disabled");
+        int metric=controller.sensorMetricFor(menu.sensorMetric()),condition=menu.sensorCondition();
+        var config=net.bdew.generators.config.GeneratorConfig.INSTANCE;
+        if(metric==6) return switch(condition) {
+            case 0 -> Component.translatable("advgenerators.sensor.param.turbine.speed.stop");
+            case 1 -> Component.translatable("advgenerators.sensor.param.turbine.speed.low");
+            case 2 -> Component.translatable("advgenerators.sensor.param.turbine.speed.medium",format(config.maxRpm/2));
+            default -> Component.translatable("advgenerators.sensor.param.turbine.speed.high",format(config.maxRpm));
+        };
+        if(metric==9) return switch(condition) {
+            case 0 -> Component.translatable("advgenerators.sensor.param.turbine.generation.stop");
+            case 1 -> Component.translatable("advgenerators.sensor.param.turbine.generation.low","0 FE/t");
+            case 2 -> Component.translatable("advgenerators.sensor.param.turbine.generation.medium",format(controller.maxOutput/2)+" FE/t");
+            default -> Component.translatable("advgenerators.sensor.param.turbine.generation.high",format(controller.maxOutput)+" FE/t");
+        };
+        if(metric==7) {
+            boolean syngas=controller.kind()==MachineKind.SYNGAS_CONTROLLER;
+            String type=syngas?"syngas":"exchanger";
+            double work=syngas?config.syngasWorkHeat:config.exchangerStartHeat;
+            double max=syngas?config.syngasMaxHeat:config.exchangerMaxHeat;
+            return switch(condition) {
+                case 0 -> Component.translatable("advgenerators.sensor.param.heat."+type+".cold");
+                case 1 -> Component.translatable("advgenerators.sensor.param.heat."+type+".low",format(work));
+                case 2 -> Component.translatable("advgenerators.sensor.param.heat."+type+".medium",format(work));
+                default -> Component.translatable("advgenerators.sensor.param.heat."+type+".high",format(max));
+            };
         }
-        if (controller != null && controller.kind() == MachineKind.FUEL_TURBINE_CONTROLLER
-                && controller.sensorMetricFor(menu.sensorMetric()) == 9)
-            return Component.translatable("advgenerators.sensor.condition.generation." + menu.sensorCondition());
-        return Component.translatable("advgenerators.sensor.condition." + menu.sensorCondition());
+        if(controller.kind()==MachineKind.EXCHANGER_CONTROLLER&&metric>=2&&metric<=5) return switch(condition) {
+            case 0 -> Component.translatable("advgenerators.sensor.param.fill.empty");
+            case 1 -> Component.translatable("advgenerators.sensor.param.resource.solid");
+            case 2 -> Component.translatable("advgenerators.sensor.param.resource.fluid");
+            case 3 -> Component.translatable("advgenerators.sensor.param.fill.gt5");
+            case 4 -> Component.translatable("advgenerators.sensor.param.fill.gt25");
+            case 5 -> Component.translatable("advgenerators.sensor.param.fill.gt50");
+            case 6 -> Component.translatable("advgenerators.sensor.param.fill.gt75");
+            case 7 -> Component.translatable("advgenerators.sensor.param.fill.gt95");
+            case 8 -> Component.translatable("advgenerators.sensor.param.fill.not.full");
+            default -> Component.translatable("advgenerators.sensor.param.fill.full");
+        };
+        return switch(condition) {
+            case 0 -> Component.translatable("advgenerators.sensor.param.fill.empty");
+            case 1 -> Component.translatable("advgenerators.sensor.param.fill.not.empty");
+            case 2 -> Component.translatable("advgenerators.sensor.param.fill.gt5");
+            case 3 -> Component.translatable("advgenerators.sensor.param.fill.gt25");
+            case 4 -> Component.translatable("advgenerators.sensor.param.fill.gt50");
+            case 5 -> Component.translatable("advgenerators.sensor.param.fill.gt75");
+            case 6 -> Component.translatable("advgenerators.sensor.param.fill.gt95");
+            case 7 -> Component.translatable("advgenerators.sensor.param.fill.not.full");
+            default -> Component.translatable("advgenerators.sensor.param.fill.full");
+        };
     }
-    private void drawInfo(GuiGraphics g,int x,int y,int row,String value) {
-        g.drawString(font,Component.literal(value),x+93,y+row,0xff404040,false);
+    private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,String value) {
+        g.blit(WIDGETS,x+76,y+row+1,iconU,iconV,8,8,iconSize,iconSize);
+        g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
     }
-    private void drawInfo(GuiGraphics g,int x,int y,int row,Component value) {
-        g.drawString(font,value,x+75,y+row,0xff404040,false);
-    }
-    private static Component flowText(Component resource, double rate, boolean fluid) {
-        if (rate <= 0) return resource;
-        return resource.copy().append(Component.literal(" "+format(rate)+(fluid ? " mB/t" : "/t")));
+    private void drawItemInfo(GuiGraphics g,int x,int y,int row,net.minecraft.world.item.Item item,String value) {
+        g.pose().pushPose();
+        g.pose().translate(x+76,y+row+1,0);
+        g.pose().scale(.5f,.5f,1);
+        g.renderItem(new ItemStack(item),0,0);
+        g.pose().popPose();
+        g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
     }
     private static String format(double value) {
         return String.format(java.util.Locale.ROOT,"%.1f",value).replaceAll("\\.0$","");
@@ -247,12 +295,8 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private static String signed(double value) { return (value>0?"+":"")+format(value); }
     @Override protected void renderLabels(GuiGraphics g,int x,int y) {
         if(outputConfigOpen) return;
-        g.drawString(font,title,8,5,0xff404040,false);
-        if (menu.status() == 0) {
-            g.drawString(font,Component.translatable("container.inventory"),8,inventoryLabelY,0xff404040,false);
-        } else {
-            g.drawString(font,Component.translatable("advgenerators.status."+menu.status()),8,inventoryLabelY,0xffaa2020,false);
-        }
+        g.drawString(font,title,8,6,0xff404040,false);
+        g.drawString(font,Component.translatable("container.inventory"),8,inventoryLabelY,0xff404040,false);
     }
     @Override public void onClose() {
         if(outputConfigOpen) outputConfigOpen=false;
@@ -276,21 +320,89 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             }
             return;
         }
-        renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my);
+        renderBackground(g,mx,my,delta); super.render(g,mx,my,delta);
         int x=mx-leftPos,y=my-topPos;
-        if(menu.machine().kind().controller()&&inside(x,y,153,19)) g.renderTooltip(font,Component.translatable("advgenerators.gui.button.output"),mx,my);
-        else if(menu.machine().kind().controller()&&inside(x,y,153,61)) g.renderTooltip(font,Component.translatable("advgenerators.gui.button.dump"),mx,my);
-        else if(menu.machine().kind()==MachineKind.CONTROL&&inside(x,y,62,37)) g.renderTooltip(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),mx,my);
-        else if(menu.machine().kind()==MachineKind.CONTROL&&inside(x,y,98,37)) {
+        List<Component> widgetTooltip=widgetTooltip(x,y);
+        if(widgetTooltip.isEmpty()) renderTooltip(g,mx,my);
+        else g.renderTooltip(font,widgetTooltip,Optional.empty(),mx,my);
+    }
+
+    /** Mirrors BdLib BaseScreen: widget tooltips take precedence over item tooltips. */
+    private List<Component> widgetTooltip(int x,int y) {
+        var kind=menu.machine().kind();
+        if(kind.controller()&&inside(x,y,153,19)) return List.of(Component.translatable("advgenerators.gui.output.title"));
+        if(kind.controller()&&inside(x,y,153,61)) return List.of(Component.translatable("advgenerators.gui.dump"));
+        if(kind==MachineKind.CONTROL&&inside(x,y,62,37)) return List.of(Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"));
+        if(kind==MachineKind.CONTROL&&inside(x,y,98,37)) {
             String[] actions={"disabled","useFuel","useSteam","generateEnergy","exchangeHeat","heatWater","mix"};
             int action=Math.max(0,Math.min(actions.length-1,menu.controlAction()));
-            g.renderTooltip(font,Component.translatable("advgenerators.control.action."+actions[action]),mx,my);
-        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,53,37)) {
-            g.renderTooltip(font,Component.translatable("advgenerators.sensor.metric."+sensorControllerId()+"."+menu.sensorMetric()),mx,my);
-        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,71,37)) {
-            g.renderTooltip(font,sensorConditionText(menu.machine().controller()),mx,my);
-        } else if(menu.machine().kind()==MachineKind.SENSOR&&inside(x,y,107,37)) {
-            g.renderTooltip(font,Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"),mx,my);
+            return List.of(Component.translatable("advgenerators.control.action."+actions[action]));
         }
+        if(kind==MachineKind.SENSOR&&inside(x,y,53,37)) return List.of(sensorMetricTooltip());
+        if(kind==MachineKind.SENSOR&&inside(x,y,71,37)) return List.of(sensorConditionText(menu.machine().controller()));
+        if(kind==MachineKind.SENSOR&&inside(x,y,107,37)) return List.of(Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"));
+        List<Component> gaugeTip=gaugeTooltip(x,y);
+        if(!gaugeTip.isEmpty()) return gaugeTip;
+        if(x>=76&&x<84) {
+            int row=y>=22&&y<30?21:y>=33&&y<41?32:y>=44&&y<52?43:y>=55&&y<63?54:y>=66&&y<74?65:-1;
+            if(kind==MachineKind.SYNGAS_CONTROLLER) return switch(row) {
+                case 21 -> List.of(Component.translatable("advgenerators.label.syngas.heat.delta"));
+                case 32 -> List.of(Component.translatable("advgenerators.label.syngas.consumed"));
+                case 43 -> List.of(Component.translatable("advgenerators.label.syngas.produced"));
+                default -> List.of();
+            };
+            if(kind==MachineKind.EXCHANGER_CONTROLLER) return switch(row) {
+                case 21 -> List.of(Component.translatable("advgenerators.label.exchanger.heat"));
+                case 32 -> List.of(Component.translatable("advgenerators.label.exchanger.maxtransfer"));
+                case 43 -> List.of(Component.translatable("advgenerators.label.exchanger.heatloss"));
+                case 54 -> List.of(menu.exchangerInputName());
+                case 65 -> List.of(menu.exchangerOutputName());
+                default -> List.of();
+            };
+            if(kind==MachineKind.FUEL_TURBINE_CONTROLLER||kind==MachineKind.STEAM_TURBINE_CONTROLLER) return switch(row) {
+                case 21 -> List.of(Component.translatable("advgenerators.label.turbine.turbines"));
+                case 32 -> List.of(Component.translatable("advgenerators.label.turbine.maxprod"));
+                case 43 -> kind==MachineKind.FUEL_TURBINE_CONTROLLER
+                    ? List.of(Component.translatable("advgenerators.label.turbine.fuel"),Component.translatable("advgenerators.label.turbine.efficiency",format(menu.efficiency()*100)+"%"))
+                    : List.of(Component.translatable("advgenerators.label.turbine.rpm"));
+                case 54 -> List.of(Component.translatable("advgenerators.label.turbine.prod"));
+                case 65 -> List.of(Component.translatable(kind==MachineKind.STEAM_TURBINE_CONTROLLER?"advgenerators.label.turbine.steamaverage":"advgenerators.label.turbine.fuelaverage"));
+                default -> List.of();
+            };
+        }
+        return List.of();
+    }
+
+    private List<Component> gaugeTooltip(int x,int y) {
+        var kind=menu.machine().kind();
+        if(kind==MachineKind.FUEL_TURBINE_CONTROLLER||kind==MachineKind.STEAM_TURBINE_CONTROLLER) {
+            if(x>=9&&x<18&&y>=19&&y<77)return resourceTooltip(0);
+            if(x>=61&&x<70&&y>=19&&y<77)
+                return List.of(Component.literal(format(menu.energy())+" / "+format(menu.capacity())+" FE"));
+        } else if(kind==MachineKind.EXCHANGER_CONTROLLER) {
+            if(x>=9&&x<18&&y>=19&&y<77)return resourceTooltip(1);
+            if(x>=21&&x<58&&y>=19&&y<35)return resourceTooltip(0);
+            if(x>=61&&x<70&&y>=19&&y<77)return resourceTooltip(2);
+            if(x>=21&&x<58&&y>=61&&y<77)return resourceTooltip(3);
+        } else if(kind==MachineKind.SYNGAS_CONTROLLER) {
+            if(x>=11&&x<21&&y>=19&&y<54)return resourceTooltip(0);
+            if(x>=57&&x<67&&y>=19&&y<54)return resourceTooltip(2);
+            if(x>=30&&x<67&&y>=61&&y<69||x>=30&&x<67&&y>=69&&y<77)
+                return List.of(
+                    Component.translatable("advgenerators.label.syngas.steam",format(menu.bufferFill(1)*100)+"%"),
+                    Component.translatable("advgenerators.label.syngas.carbon",format(menu.carbonFill()*100)+"%"));
+            if(x>=9&&x<23&&y>=62&&y<76) {
+                if(menu.machine().heatingChambers<=0)return List.of(Component.translatable("advgenerators.label.syngas.heat.disabled"));
+                return List.of(Component.translatable("advgenerators.label.syngas.heat",format(menu.heat()),format(net.bdew.generators.config.GeneratorConfig.INSTANCE.syngasMaxHeat)));
+            }
+        }
+        return List.of();
+    }
+
+    private List<Component> resourceTooltip(int index) {
+        Component name=menu.bufferResourceName(index);
+        if(name.getString().isEmpty())return List.of(Component.translatable("advgenerators.sensor.param.fill.empty"));
+        String key=menu.bufferIsFluid(index)?"resource.fluid.format":"resource.item.format";
+        return List.of(name,Component.translatable(key,format(menu.bufferAmount(index)),format(menu.bufferCapacity(index))));
     }
 }
