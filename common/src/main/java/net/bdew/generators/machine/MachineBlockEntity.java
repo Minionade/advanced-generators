@@ -32,7 +32,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public final SimpleContainer inventory = new SimpleContainer(4) { @Override public boolean canPlaceItem(int slot, ItemStack stack) { return kind()==MachineKind.SYNGAS_CONTROLLER && carbonValue(stack)>0; } };
     public long energy, energyCapacity;
     public double maxOutput, heat, carbon, burnTime, rpm, energyFraction;
-    public double generationRate, consumptionRate, processRate;
+    public double generationRate, consumptionRate, processRate, heatLossRate;
     public int turbines, heatingChambers, mixingChambers, exchangers;
     public double inertia = 1, efficiency = 1.1;
     public int controlAction, sensorMetric, sensorCondition;
@@ -74,7 +74,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         var network = machine.network();
         if (machine.kind().controller()) {
             machine.recalculate();
-            machine.generationRate = machine.consumptionRate = machine.processRate = 0;
+            machine.generationRate = machine.consumptionRate = machine.processRate = machine.heatLossRate = 0;
             if (network.error() == 0) {
                 switch (machine.kind()) {
                     case FUEL_TURBINE_CONTROLLER -> machine.tickFuel();
@@ -197,7 +197,9 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             double hu = exchange(buffers[1],buffers[2],"exchanger_cooling",Math.min(heat-c.exchangerStartHeat,exchangers*c.exchangerTransfer));
             heat -= hu; processRate = hu;
         }
+        double beforeLoss=heat;
         heat *= 1-c.exchangerDecay;
+        heatLossRate=beforeLoss-heat;
         if (enabled && heat < c.exchangerMaxHeat) {
             double hu = exchange(buffers[0],buffers[3],"exchanger_heating",Math.min(c.exchangerMaxHeat-heat,exchangers*c.exchangerTransfer));
             heat += hu; consumptionRate = hu;
@@ -213,8 +215,9 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         return disabled ? false : fallback;
     }
     public boolean outputEnabled(Direction side) {
-        if (!kind().output()) return false;
-        int mode = outputMode[side.get3DDataValue()]; boolean signal = level.hasNeighborSignal(worldPosition);
+        if (!kind().output() || level==null) return false;
+        var config=controller(); if(config==null)return false;
+        int mode = config.outputMode[side.get3DDataValue()]; boolean signal = level.hasNeighborSignal(worldPosition);
         return mode == 0 || mode == 1 && signal || mode == 2 && !signal;
     }
     public int[] inputSlots() { return kind() == MachineKind.SYNGAS_CONTROLLER || kind() == MachineKind.EXCHANGER_CONTROLLER ? new int[]{0,1} : new int[]{0}; }

@@ -34,7 +34,7 @@ public final class FabricTransfers {
             if(machine.kind()!=MachineKind.FLUID_OUTPUT_SELECT)return null;
             var core=machine.controller(); if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<FluidBufferStorage>();
-            for(int slot:core.outputSlots(machine.outputSelection[side.get3DDataValue()]))parts.add(new FluidBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(core.outputSelection[side.get3DDataValue()]))parts.add(new FluidBufferStorage(core,slot,false,true));
             return new CombinedStorage<FluidVariant,FluidBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.FLUID_INPUT?machine.controller():null;
@@ -47,7 +47,7 @@ public final class FabricTransfers {
         if(machine.kind()==MachineKind.ITEM_OUTPUT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<ItemBufferStorage>();
-            for(int slot:core.outputSlots(machine.outputSelection[side.get3DDataValue()]))parts.add(new ItemBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(core.outputSelection[side.get3DDataValue()]))parts.add(new ItemBufferStorage(core,slot,false,true));
             return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.ITEM_INPUT?machine.controller():null;
@@ -67,7 +67,7 @@ public final class FabricTransfers {
         BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
         if(module.kind()==MachineKind.FE_OUTPUT) {
             var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)return;
-            long moved=core.extractEnergy(Math.min(module.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
+            long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
             if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
         } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());

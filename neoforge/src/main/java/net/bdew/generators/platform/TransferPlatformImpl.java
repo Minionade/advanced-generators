@@ -44,7 +44,7 @@ public final class TransferPlatformImpl {
         BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)return;
         if(module.kind()==MachineKind.FE_OUTPUT) {
             IEnergyStorage dst=level.getCapability(Capabilities.EnergyStorage.BLOCK,target.getBlockPos(),side.getOpposite());if(dst==null||!dst.canReceive())return;
-            int moved=(int)core.extractEnergy(Math.min(module.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
+            int moved=(int)core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
             if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0)core.extractEnergy(accepted,false);}
         } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             IFluidHandler src=fluids(module,side),dst=level.getCapability(Capabilities.FluidHandler.BLOCK,target.getBlockPos(),side.getOpposite());
@@ -61,7 +61,7 @@ public final class TransferPlatformImpl {
     public static IFluidHandler fluids(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
-            return new NativeFluidHandler(core,core.outputSlots(machine.outputSelection[side.get3DDataValue()]),false,true);
+            return new NativeFluidHandler(core,core.outputSlots(core.outputSelection[side.get3DDataValue()]),false,true);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.FLUID_INPUT?machine.controller():null;
         return core==null?null:new NativeFluidHandler(core,core.inputSlots(),true,false);
@@ -69,7 +69,7 @@ public final class TransferPlatformImpl {
     public static IItemHandler items(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.ITEM_OUTPUT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
-            return new NativeItemHandler(core,core.outputSlots(machine.outputSelection[side.get3DDataValue()]),false,true);
+            return new NativeItemHandler(core,core.outputSlots(core.outputSelection[side.get3DDataValue()]),false,true);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.ITEM_INPUT?machine.controller():null;
         if(core==null)return null;
