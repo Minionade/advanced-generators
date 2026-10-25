@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -101,6 +102,11 @@ public final class TransferPlatformImpl {
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;
         if(machine.kind().isEnergyOutput()) {
+            // BCCE's MJ bridge adapts neighboring NeoForge FE storages to MJ
+            // ports. Register the side even when the MJ pipe has no FE
+            // receiver capability of its own, so our FE endpoint is visible
+            // to that bridge and can be controlled per face in the GUI.
+            if(ModList.get().isLoaded("buildcraftlib"))return true;
             IEnergyStorage target=level.getCapability(Capabilities.EnergyStorage.BLOCK,targetPos,side.getOpposite());
             return target!=null&&target.canReceive();
         }
