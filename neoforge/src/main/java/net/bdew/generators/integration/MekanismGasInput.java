@@ -47,7 +47,19 @@ public final class MekanismGasInput {
             MachineBlockEntity core = core();
             if (core == null) return 0;
             long capacity = 0;
-            for (int slot : core.inputSlots()) capacity += (long)Math.max(0, core.buffers[slot].capacity);
+            for (RotaryRecipe recipe : recipes().stream().map(net.minecraft.world.item.crafting.RecipeHolder::value)
+                    .filter(RotaryRecipe::hasChemicalToFluid).toList()) {
+                FluidStack output = recipe.getFluidOutputDefinition().stream().findFirst().orElse(FluidStack.EMPTY);
+                if (output.isEmpty()) continue;
+                double fluidCapacity = 0;
+                ResourceLocation outputId = BuiltInRegistries.FLUID.getKey(output.getFluid());
+                for (int slot : core.inputSlots()) if (core.accepts(slot, false, outputId, DataComponentPatch.EMPTY))
+                    fluidCapacity += Math.max(0, core.buffers[slot].capacity);
+                long inputPerBatch = recipe.getChemicalInput().amount();
+                long outputPerBatch = output.getAmount();
+                if (outputPerBatch > 0) capacity = Math.max(capacity,
+                    (long)Math.floor(fluidCapacity * inputPerBatch / outputPerBatch));
+            }
             return capacity;
         }
         @Override public boolean isValid(int tank, ChemicalStack stack) {
@@ -64,20 +76,37 @@ public final class MekanismGasInput {
             if (recipe == null || core == null) return stack;
             FluidStack output = recipe.getFluidOutput(stack);
             if (output.isEmpty()) return stack;
-            int amount = (int)Math.min(Integer.MAX_VALUE, stack.getAmount());
+            long inputPerBatch = recipe.getChemicalInput().amount();
+            long outputPerBatch = output.getAmount();
+            if (inputPerBatch <= 0 || outputPerBatch <= 0) return stack;
+            long batches = stack.getAmount() / inputPerBatch;
+            if (batches <= 0) return stack;
+            long requested;
+            try { requested = Math.multiplyExact(batches, outputPerBatch); }
+            catch (ArithmeticException overflow) { requested = Integer.MAX_VALUE; batches = requested / outputPerBatch; }
+            requested = Math.min(requested, Integer.MAX_VALUE);
             ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(output.getFluid());
-            boolean simulate = action == Action.SIMULATE;
-            double accepted = 0;
-            for (int slot : core.inputSlots()) {
-                if (!core.accepts(slot, false, fluidId, DataComponentPatch.EMPTY)) continue;
-                accepted += core.insertResource(slot, false, fluidId, DataComponentPatch.EMPTY,
-                    amount - accepted, simulate);
-                if (accepted >= amount) break;
-            }
-            long consumed = Math.min(stack.getAmount(), (long)Math.floor(accepted));
+            double available = insertFluid(core, fluidId, output, requested, true);
+            long acceptedBatches = Math.min(batches, (long)Math.floor(available / outputPerBatch));
+            if (acceptedBatches <= 0) return stack;
+            long acceptedFluid = acceptedBatches * outputPerBatch;
+            if (action.execute()) insertFluid(core, fluidId, output, acceptedFluid, false);
+            long consumed = acceptedBatches * inputPerBatch;
             return consumed == 0 ? stack : stack.copyWithAmount(stack.getAmount() - consumed);
         }
         @Override public ChemicalStack extractChemical(int tank, long amount, Action action) { return ChemicalStack.EMPTY; }
+
+        private static double insertFluid(MachineBlockEntity core, ResourceLocation id, FluidStack output,
+                                          long amount, boolean simulate) {
+            double accepted = 0;
+            for (int slot : core.inputSlots()) {
+                if (!core.accepts(slot, false, id, DataComponentPatch.EMPTY)) continue;
+                accepted += core.insertResource(slot, false, id, DataComponentPatch.EMPTY,
+                    amount - accepted, simulate);
+                if (accepted >= amount) break;
+            }
+            return accepted;
+        }
 
         private static boolean accepts(MachineBlockEntity core, net.minecraft.world.level.material.Fluid fluid) {
             ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid);

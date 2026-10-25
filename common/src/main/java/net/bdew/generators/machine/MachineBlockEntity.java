@@ -33,6 +33,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public long energy, energyCapacity;
     public double maxOutput, heat, carbon, burnTime, rpm, energyFraction;
     public double generationRate, consumptionRate, processRate, heatLossRate;
+    public double heatDeltaRate;
     public int turbines, heatingChambers, mixingChambers, exchangers;
     public double inertia = 1, efficiency = 1.1;
     public int controlAction, sensorMetric, sensorCondition;
@@ -74,7 +75,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         var network = machine.network();
         if (machine.kind().controller()) {
             machine.recalculate();
-            machine.generationRate = machine.consumptionRate = machine.processRate = machine.heatLossRate = 0;
+            machine.generationRate = machine.consumptionRate = machine.processRate = machine.heatLossRate = machine.heatDeltaRate = 0;
             if (network.error() == 0) {
                 switch (machine.kind()) {
                     case FUEL_TURBINE_CONTROLLER -> machine.tickFuel();
@@ -158,6 +159,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     }
     private void tickSyngas() {
         var c = GeneratorConfig.INSTANCE;
+        double startingHeat = heat;
         if (heat < c.syngasMaxHeat && carbon > 0 && heatingChambers > 0 && control(5, buffers[0].amount > 0)) {
             double add = EngineMath.min(c.syngasMaxHeat-heat, carbon/c.carbonPerHeat, heatingChambers*c.chamberHeating);
             heat += add; carbon -= add*c.carbonPerHeat; consumptionRate += add*c.carbonPerHeat;
@@ -178,6 +180,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             double value = carbonValue(inventory.getItem(slot));
             if (value > 0 && c.syngasCapacity-carbon >= value) { inventory.removeItem(slot,1); carbon += value; }
         }
+        heatDeltaRate = heat - startingHeat;
     }
     private MachineRecipe exchangerRecipe(String type, boolean item, ResourceLocation id, DataComponentPatch patch) {
         if (id == null) return null;
@@ -270,7 +273,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         // and generation), and fill thresholds for tanks/buffers.
         if (metric == 6 || metric == 7 || metric == 9) {
             double midpoint = switch (metric) {
-                case 7 -> kind() == MachineKind.SYNGAS_CONTROLLER
+                case 7 -> c.kind() == MachineKind.SYNGAS_CONTROLLER
                     ? GeneratorConfig.INSTANCE.syngasWorkHeat / GeneratorConfig.INSTANCE.syngasMaxHeat
                     : GeneratorConfig.INSTANCE.exchangerStartHeat / GeneratorConfig.INSTANCE.exchangerMaxHeat;
                 default -> .5;

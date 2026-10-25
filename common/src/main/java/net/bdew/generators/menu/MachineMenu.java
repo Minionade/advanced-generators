@@ -15,7 +15,7 @@ public final class MachineMenu extends AbstractContainerMenu {
     public MachineMenu(int id, Inventory playerInventory, MachineBlockEntity machine) {
         super(ModContent.MACHINE_MENU.get(), id);
         this.machine = machine;
-        this.data = new SimpleContainerData(44) {
+        this.data = new SimpleContainerData(45) {
             @Override public int get(int i) {
                 return switch(i) {
                     case 0 -> (int)(machine.energy & 0x7fffffff);
@@ -46,7 +46,8 @@ public final class MachineMenu extends AbstractContainerMenu {
                     case 40 -> fill(machine.buffers[3]);
                     case 41 -> fill(machine.carbon,Math.max(1,net.bdew.generators.config.GeneratorConfig.INSTANCE.syngasCapacity));
                     case 42 -> fill(machine.heat,machine.kind()==MachineKind.SYNGAS_CONTROLLER?net.bdew.generators.config.GeneratorConfig.INSTANCE.syngasMaxHeat:net.bdew.generators.config.GeneratorConfig.INSTANCE.exchangerMaxHeat);
-                    case 43 -> (int)Math.min(Integer.MAX_VALUE,machine.heatLossRate*100);
+                    case 43 -> (int)Math.max(Integer.MIN_VALUE,Math.min(Integer.MAX_VALUE,(machine.kind()==MachineKind.SYNGAS_CONTROLLER?machine.heatDeltaRate:machine.heatLossRate)*100));
+                    case 44 -> (int)Math.round(machine.efficiency*100);
                     default -> 0;
                 };
             }
@@ -95,6 +96,8 @@ public final class MachineMenu extends AbstractContainerMenu {
     public double carbonFill() { return data.get(41)/1000.0; }
     public double heatFill() { return data.get(42)/1000.0; }
     public double heatLoss() { return data.get(43)/100.0; }
+    public double heatDelta() { return data.get(43)/100.0; }
+    public double efficiency() { return data.get(44)/100.0; }
     private static int fill(ResourceBuffer buffer) {
         return fill(buffer.amount,buffer.capacity);
     }
@@ -111,7 +114,7 @@ public final class MachineMenu extends AbstractContainerMenu {
         } else if (machine.kind()==MachineKind.CONTROL) {
             if (button==0) {
                 var core = machine.controller();
-                int[] actions = MachineBlockEntity.controlActions(core == null ? MachineKind.FUEL_TURBINE_CONTROLLER : core.kind());
+                int[] actions = core == null ? new int[]{0} : MachineBlockEntity.controlActions(core.kind());
                 int current = 0;
                 for (int i=0;i<actions.length;i++) if (actions[i] == machine.controlAction) current = i;
                 machine.controlAction = actions[(current+1)%actions.length];

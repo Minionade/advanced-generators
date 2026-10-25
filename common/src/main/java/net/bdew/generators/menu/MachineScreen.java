@@ -90,7 +90,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private void drawMachineInfo(GuiGraphics g,int x,int y) {
         var machine=menu.machine();
         if(machine.kind()==MachineKind.SYNGAS_CONTROLLER) {
-            drawInfo(g,x,y,21,format(menu.heat())+" HU");
+            drawInfo(g,x,y,21,"Heat "+signed(menu.heatDelta())+" HU/t");
             drawInfo(g,x,y,32,"Carbon "+format(menu.consumption())+"/t");
             drawInfo(g,x,y,43,"Gas "+format(menu.process())+"/t");
         } else if(machine.kind()==MachineKind.EXCHANGER_CONTROLLER) {
@@ -102,7 +102,10 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         } else if(machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER || machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
             drawInfo(g,x,y,21,menu.turbines()+" turbines");
             drawInfo(g,x,y,32,"Peak "+format(menu.output())+" FE/t");
-            drawInfo(g,x,y,43,format(menu.rpm())+" RPM");
+            if (machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER)
+                drawInfo(g,x,y,43,"Efficiency "+format(menu.efficiency()*100)+"%");
+            else
+                drawInfo(g,x,y,43,format(menu.rpm())+" RPM");
             drawInfo(g,x,y,54,"Out "+format(menu.generation())+" FE/t");
             drawInfo(g,x,y,65,(machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER?"Steam ":"Fuel ")+format(menu.consumption())+"/t");
         } else if(machine.kind()==MachineKind.CONTROL) {
@@ -124,9 +127,14 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private static String format(double value) {
         return String.format(java.util.Locale.ROOT,"%.1f",value).replaceAll("\\.0$","");
     }
+    private static String signed(double value) { return (value>0?"+":"")+format(value); }
     @Override protected void renderLabels(GuiGraphics g,int x,int y) {
         g.drawString(font,title,8,5,0xff404040,false);
-        g.drawString(font,Component.translatable("container.inventory"),8,inventoryLabelY,0xff404040,false);
+        if (menu.status() == 0) {
+            g.drawString(font,Component.translatable("container.inventory"),8,inventoryLabelY,0xff404040,false);
+        } else {
+            g.drawString(font,Component.translatable("advgenerators.status."+menu.status()),8,inventoryLabelY,0xffaa2020,false);
+        }
     }
     @Override public void render(GuiGraphics g,int mx,int my,float delta) { renderBackground(g,mx,my,delta); super.render(g,mx,my,delta); renderTooltip(g,mx,my); }
 }
