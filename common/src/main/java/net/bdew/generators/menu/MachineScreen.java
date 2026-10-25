@@ -278,7 +278,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         };
     }
     private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,String value) {
-        g.blit(WIDGETS,x+76,y+row+1,iconU,iconV,8,8,iconSize,iconSize);
+        g.blit(WIDGETS,x+76,y+row+1,0,iconU,iconV,8,8,iconSize,iconSize,TEXTURE_SIZE,TEXTURE_SIZE);
         g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
     }
     private void drawItemInfo(GuiGraphics g,int x,int y,int row,net.minecraft.world.item.Item item,String value) {
