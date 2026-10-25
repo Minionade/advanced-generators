@@ -1,0 +1,6 @@
+{
+  "loader": "neoforge:fluid_container",
+  "parent": "neoforge:item/bucket",
+  "fluid": "advgenerators:steam",
+  "flip_gas": true
+}
