@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "advgenerators:item/syngas_bucket"
-  }
+  "parent": "minecraft:item/lava_bucket"
 }
