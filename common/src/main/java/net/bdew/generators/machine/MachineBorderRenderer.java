@@ -7,51 +7,116 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
 
-/** Draws the connected 1px frame from the original BdLib multiblock overlay texture. */
+/**
+ * BdLib-style connected frame renderer. It draws only those 1/16th edge
+ * segments whose neighboring block is not part of the same linked machine.
+ */
 public final class MachineBorderRenderer implements BlockEntityRenderer<MachineBlockEntity> {
     private static final ResourceLocation EDGE = Generators.id("textures/block/connected/edge.png");
+    private static final float EDGE_SIZE = 1.0f / 16.0f;
+    private static final float EXPANSION = 1.001f;
 
     public MachineBorderRenderer(BlockEntityRendererProvider.Context context) {}
 
     @Override
-    public void render(MachineBlockEntity machine, float partialTick, PoseStack pose, MultiBufferSource buffers,
+    public void render(MachineBlockEntity machine, float partialTick, PoseStack stack, MultiBufferSource buffers,
                        int packedLight, int packedOverlay) {
         if (machine.getLevel() == null) return;
-        VertexConsumer out = buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE));
+        var level = machine.getLevel();
+        var pos = machine.getBlockPos();
+        var consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE));
         for (Direction face : Direction.values()) {
-            BlockEntity neighbor = machine.getLevel().getBlockEntity(machine.getBlockPos().relative(face));
-            if (neighbor instanceof MachineBlockEntity) continue;
-            drawFace(pose, out, face, packedLight, packedOverlay);
+            BlockPos outside = pos.relative(face);
+            if (level.getBlockState(outside).isSolidRender(level, outside)) continue;
+
+            Direction top = top(face);
+            Direction right = right(face);
+            boolean u = !connects(machine, pos.relative(top));
+            boolean d = !connects(machine, pos.relative(top.getOpposite()));
+            boolean l = !connects(machine, pos.relative(right.getOpposite()));
+            boolean r = !connects(machine, pos.relative(right));
+
+            if (u) drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+            if (d) drawRect(stack, consumer, face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+            if (l) drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
+            if (r) drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
+
+            if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
+                drawRect(stack, consumer, face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+            if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
+                drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
+            if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
+                drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+            if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
+                drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
         }
     }
 
-    private static void drawFace(PoseStack stack, VertexConsumer out, Direction face, int light, int overlay) {
-        float[][] points = switch (face) {
-            case DOWN -> new float[][]{{0,-0.001f,0},{1,-0.001f,0},{1,-0.001f,1},{0,-0.001f,1}};
-            case UP -> new float[][]{{0,1.001f,0},{0,1.001f,1},{1,1.001f,1},{1,1.001f,0}};
-            case NORTH -> new float[][]{{0,0,-0.001f},{0,1,-0.001f},{1,1,-0.001f},{1,0,-0.001f}};
-            case SOUTH -> new float[][]{{0,0,1.001f},{1,0,1.001f},{1,1,1.001f},{0,1,1.001f}};
-            case WEST -> new float[][]{{-0.001f,0,0},{-0.001f,0,1},{-0.001f,1,1},{-0.001f,1,0}};
-            case EAST -> new float[][]{{1.001f,0,0},{1.001f,1,0},{1.001f,1,1},{1.001f,0,1}};
+    private static boolean connects(MachineBlockEntity machine, BlockPos targetPos) {
+        var level = machine.getLevel();
+        if (level == null || !level.hasChunkAt(targetPos)) return false;
+        BlockEntity targetEntity = level.getBlockEntity(targetPos);
+        if (!(targetEntity instanceof MachineBlockEntity target)) return false;
+
+        if (machine.kind().controller()) return machine.network().members().contains(targetPos);
+        BlockPos core = machine.connectedCore();
+        if (core == null) return false;
+        if (targetPos.equals(core)) return true;
+        return !target.kind().controller() && core.equals(target.connectedCore());
+    }
+
+    private static Direction top(Direction face) {
+        return switch (face) {
+            case UP -> Direction.NORTH;
+            case DOWN -> Direction.SOUTH;
+            default -> Direction.UP;
         };
+    }
+
+    private static Direction right(Direction face) {
+        return switch (face) {
+            case UP, DOWN, SOUTH -> Direction.EAST;
+            case NORTH -> Direction.WEST;
+            case WEST -> Direction.SOUTH;
+            case EAST -> Direction.NORTH;
+        };
+    }
+
+    private static void drawRect(PoseStack stack, VertexConsumer out, Direction face,
+                                 float x1, float y1, float x2, float y2,
+                                 float u1, float v1, float u2, float v2, int light, int overlay) {
+        float[][] positions = {
+            point(face, x1, y1), point(face, x2, y1), point(face, x2, y2), point(face, x1, y2)
+        };
+        float[][] uvs = {{u1,v1},{u2,v1},{u2,v2},{u1,v2}};
         var pose = stack.last();
-        Matrix4f position = pose.pose();
-        Matrix3f normal = pose.normal();
-        float[][] uv = {{0,0},{0,1},{1,1},{1,0}};
         for (int i = 0; i < 4; i++) {
-            out.vertex(position, points[i][0], points[i][1], points[i][2])
-                .color(255, 255, 255, 255)
-                .uv(uv[i][0], uv[i][1])
-                .overlayCoords(overlay)
-                .uv2(light)
-                .normal(normal, face.getStepX(), face.getStepY(), face.getStepZ())
-                .endVertex();
+            float[] p = positions[i];
+            float x = (p[0] - .5f) * EXPANSION + .5f;
+            float y = (p[1] - .5f) * EXPANSION + .5f;
+            float z = (p[2] - .5f) * EXPANSION + .5f;
+            out.addVertex(pose.pose(), x, y, z)
+                .setColor(255, 255, 255, 255)
+                .setUv(uvs[i][0], uvs[i][1])
+                .setOverlay(overlay)
+                .setLight(light)
+                .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
         }
+    }
+
+    private static float[] point(Direction face, float u, float v) {
+        return switch (face) {
+            case UP -> new float[]{u,1,1-v};
+            case DOWN -> new float[]{u,0,v};
+            case NORTH -> new float[]{1-u,v,0};
+            case SOUTH -> new float[]{u,v,1};
+            case EAST -> new float[]{1,v,1-u};
+            case WEST -> new float[]{0,v,u};
+        };
     }
 }
