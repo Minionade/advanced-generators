@@ -278,10 +278,11 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         };
     }
     private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,String value) {
-        // Use the public atlas-region overload. The 12-argument overload in
-        // GuiGraphics is package-private in 1.21.1, and iconSize is already
-        // the source region's dimensions rather than the atlas dimensions.
-        g.blit(WIDGETS,x+76,y+row+1,iconU,iconV,8,8,TEXTURE_SIZE,TEXTURE_SIZE);
+        // Sample the complete 16x16 or 32x32 atlas icon and scale it to the
+        // original BdLib info-widget size of 8x8. The overload with separate
+        // source dimensions is public when UVs are normalized floats.
+        g.blit(WIDGETS,x+76,y+row+1,8,8,iconU/(float)TEXTURE_SIZE,iconV/(float)TEXTURE_SIZE,
+            iconSize,iconSize,TEXTURE_SIZE,TEXTURE_SIZE);
         g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
     }
     private void drawItemInfo(GuiGraphics g,int x,int y,int row,net.minecraft.world.item.Item item,String value) {
