@@ -142,7 +142,10 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
             double consumed = buffers[0].extract(Math.ceil(10 * fuelPerTick), false);
             burnTime += consumed / fuelPerTick; consumptionRate = consumed;
         }
-        if (burnTime >= 1 && energyCapacity - energy >= maxOutput) { burnTime -= 1; addEnergy(maxOutput); }
+        // Preserve the legacy controller's strict thresholds: a full output
+        // packet needs a little more than one tick of stored burn time, and
+        // the capacitor must have room strictly greater than that packet.
+        if (burnTime > 1 && energyCapacity - energy > maxOutput) { burnTime -= 1; addEnergy(maxOutput); }
     }
     private void tickSteam() {
         var c = GeneratorConfig.INSTANCE;
@@ -226,7 +229,9 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public int[] inputSlots() { return kind() == MachineKind.SYNGAS_CONTROLLER || kind() == MachineKind.EXCHANGER_CONTROLLER ? new int[]{0,1} : new int[]{0}; }
     public int[] outputSlots(int selection) {
         if (kind() == MachineKind.SYNGAS_CONTROLLER) return new int[]{2};
-        if (kind() == MachineKind.EXCHANGER_CONTROLLER) return selection == 1 ? new int[]{2} : selection == 2 ? new int[]{3} : new int[]{2,3};
+        // Exchanger buffers: 2 = hot output, 3 = cold output. The GUI's
+        // selection order is Both, Cold, Hot.
+        if (kind() == MachineKind.EXCHANGER_CONTROLLER) return selection == 1 ? new int[]{3} : selection == 2 ? new int[]{2} : new int[]{2,3};
         return new int[0];
     }
     private boolean steam(ResourceLocation id) {
