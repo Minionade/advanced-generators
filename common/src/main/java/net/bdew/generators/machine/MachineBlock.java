@@ -67,7 +67,7 @@ public class MachineBlock extends BaseEntityBlock {
         if (!kind.controller() && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.tryConnect();
     }
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
-    @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new MachineBlockEntity(pos, state); }
+    @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return TransferPlatform.createMachineBlockEntity(pos, state); }
     @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide ? null : createTickerHelper(type, net.bdew.generators.ModContent.MACHINE_ENTITY.get(), MachineBlockEntity::tick);
     }

@@ -38,6 +38,7 @@ public final class ModContent {
     static {
         for (var kind : MachineKind.values()) {
             if (kind.isEuOutput() && !euEnergyApiLoaded()) continue;
+            if (kind.isMjOutput() && !Platform.isModLoaded("buildcraftlib")) continue;
             var block = BLOCKS.register(kind.id(), () -> MachineBlock.create(kind)); MACHINES.put(kind, block);
             ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new MachineBlockItem(block.get(), kind)));
         }
@@ -52,7 +53,7 @@ public final class ModContent {
         GASES.put("steam", new FluidDef("steam")); GASES.put("syngas", new FluidDef("syngas"));
     }
     public static final RegistrySupplier<BlockEntityType<MachineBlockEntity>> MACHINE_ENTITY = ENTITIES.register("machine", () ->
-        BlockEntityType.Builder.of(MachineBlockEntity::new, MACHINES.values().stream().map(RegistrySupplier::get).toArray(Block[]::new)).build(null));
+        BlockEntityType.Builder.of(TransferPlatform::createMachineBlockEntity, MACHINES.values().stream().map(RegistrySupplier::get).toArray(Block[]::new)).build(null));
     public static final RegistrySupplier<MenuType<MachineMenu>> MACHINE_MENU = MENUS.register("machine", () -> MenuRegistry.ofExtended(MachineMenu::client));
     public static final RegistrySupplier<CreativeModeTab> TAB = TABS.register("main", () -> CreativeTabRegistry.create(builder -> builder
         .title(Component.translatable("itemGroup.bdew.generators"))

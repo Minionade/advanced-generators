@@ -17,6 +17,8 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import java.util.ArrayList;
@@ -32,6 +34,11 @@ public final class TransferPlatformImpl {
             public Object itemStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.items(machine, side); }
             public Object energyStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.energy(machine, side); }
             public boolean canOutputOn(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.canOutputOn(machine, side); }
+            public MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state) {
+                return ModList.get().isLoaded("buildcraftlib")
+                    ? BuildCraftMachineBlockEntity.create(pos, state)
+                    : new MachineBlockEntity(pos, state);
+            }
         };
     }
     public static void registerCapabilities(net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent event) {
@@ -41,6 +48,7 @@ public final class TransferPlatformImpl {
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK,type,TransferPlatformImpl::energy);
     }
     public static void push(MachineBlockEntity module) {
+        if (module.kind().isMjOutput()) return; // BCCE pulls from the native MJ port.
         var level=module.getLevel();
         var core=module.controller();if(core==null)return;
         for(Direction side:Direction.values()) {
@@ -65,6 +73,7 @@ public final class TransferPlatformImpl {
         IFluidHandler target=fluids(core,side);return target!=null&&FluidUtil.interactWithFluidHandler(player,hand,target);
     }
     public static IFluidHandler fluids(MachineBlockEntity machine,Direction side) {
+        if (machine.kind().isMjOutput()) return BuildCraftMachineBlockEntity.canOutputOn(machine, side);
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
             return new NativeFluidHandler(core,core.outputSlots(core.outputSelection(machine,side)),false,true);
@@ -102,11 +111,6 @@ public final class TransferPlatformImpl {
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;
         if(machine.kind().isEnergyOutput()) {
-            // BCCE's MJ bridge adapts neighboring NeoForge FE storages to MJ
-            // ports. Register the side even when the MJ pipe has no FE
-            // receiver capability of its own, so our FE endpoint is visible
-            // to that bridge and can be controlled per face in the GUI.
-            if(ModList.get().isLoaded("buildcraftlib"))return true;
             IEnergyStorage target=level.getCapability(Capabilities.EnergyStorage.BLOCK,targetPos,side.getOpposite());
             return target!=null&&target.canReceive();
         }

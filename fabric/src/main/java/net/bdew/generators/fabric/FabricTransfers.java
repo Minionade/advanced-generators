@@ -67,6 +67,7 @@ public final class FabricTransfers {
         return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
     }
     public static Object energy(MachineBlockEntity machine,Direction side) {
+        if (machine.kind().isMjOutput()) return null;
         return energyIntegration==null?null:energyIntegration.storage(machine,side);
     }
     public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
@@ -74,6 +75,7 @@ public final class FabricTransfers {
         if(level==null||side==null||!machine.kind().output()||machine.controller()==null)return false;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
         if(machine.kind().isEnergyOutput())return energyIntegration!=null&&energyIntegration.canOutputOn(machine,side);
+        if(machine.kind().isMjOutput())return false;
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
@@ -87,6 +89,7 @@ public final class FabricTransfers {
         return false;
     }
     public static void push(MachineBlockEntity module) {
+        if(module.kind().isMjOutput())return;
         if(module.kind().isEnergyOutput()) {
             if(energyIntegration!=null)energyIntegration.push(module);
             return;

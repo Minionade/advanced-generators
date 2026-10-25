@@ -4,6 +4,8 @@ import net.bdew.generators.machine.MachineBlockEntity;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
 
 /** Loader-neutral entry points for machine transfer integrations. */
 public final class TransferPlatform {
@@ -14,6 +16,7 @@ public final class TransferPlatform {
         Object itemStorage(MachineBlockEntity machine, Direction side);
         Object energyStorage(MachineBlockEntity machine, Direction side);
         boolean canOutputOn(MachineBlockEntity machine, Direction side);
+        MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state);
     }
 
     private static volatile Provider provider;
@@ -36,4 +39,5 @@ public final class TransferPlatform {
     public static Object itemStorage(MachineBlockEntity machine, Direction side) { return provider().itemStorage(machine, side); }
     public static Object energyStorage(MachineBlockEntity machine, Direction side) { return provider().energyStorage(machine, side); }
     public static boolean canOutputOn(MachineBlockEntity machine, Direction side) { return provider().canOutputOn(machine, side); }
+    public static MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state) { return provider().createMachineBlockEntity(pos, state); }
 }

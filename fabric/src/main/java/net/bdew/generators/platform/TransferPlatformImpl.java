@@ -6,6 +6,8 @@ import net.bdew.generators.platform.TransferPlatform;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
 
 public final class TransferPlatformImpl {
     public static TransferPlatform.Provider provider() {
@@ -16,6 +18,7 @@ public final class TransferPlatformImpl {
             public Object itemStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.items(machine,side);}
             public Object energyStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.energy(machine,side);}
             public boolean canOutputOn(MachineBlockEntity machine,Direction side){return FabricTransfers.canOutputOn(machine,side);}
+            public MachineBlockEntity createMachineBlockEntity(BlockPos pos,BlockState state){return new MachineBlockEntity(pos,state);}
         };
     }
     private TransferPlatformImpl(){}

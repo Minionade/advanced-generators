@@ -145,13 +145,14 @@ public final class MachineMenu extends AbstractContainerMenu {
         var kind=outputKind(row);
         if(kind==null)return "/t";
         if(kind.isEuOutput())return "EU/t";
+        if(kind.isMjOutput())return "MJ/t";
         if(kind.isEnergyOutput())return "FE/t";
         return kind==MachineKind.FLUID_OUTPUT_SELECT?"mB/t":"items/t";
     }
     public String outputLabel(int row) {
         var kind=outputKind(row); var direction=outputDirection(row);
         if(kind==null||direction==null)return "";
-        String output=kind.isEuOutput()?"EU":kind.isEnergyOutput()?"FE":kind==MachineKind.FLUID_OUTPUT_SELECT?"FL":kind==MachineKind.ITEM_OUTPUT?"IT":"Out";
+        String output=kind.isEuOutput()?"EU":kind.isMjOutput()?"MJ":kind.isEnergyOutput()?"FE":kind==MachineKind.FLUID_OUTPUT_SELECT?"FL":kind==MachineKind.ITEM_OUTPUT?"IT":"Out";
         String face=switch(direction){case DOWN->"D";case UP->"U";case NORTH->"N";case SOUTH->"S";case WEST->"W";case EAST->"E";};
         return output+" "+face;
     }

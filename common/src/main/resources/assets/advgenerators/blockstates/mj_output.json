@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "advgenerators:block/mj_output"
+    }
+  }
+}

@@ -27,6 +27,7 @@ dependencies {
     modCompileOnly "curse.maven:mekanism-268560:7904058"
     modCompileOnly "curse.maven:singularity-iteration-1617642:9299533"
     modCompileOnly "curse.maven:modern-industrialization-405388:8863289"
+    modCompileOnly "maven.modrinth:z3Aj5eOl:VSfBR0IB" // BuildCraft Community Edition MJ API
     modCompileOnly "dev.technici4n:GrandPower:3.0.0"
     compileOnly "org.appliedenergistics:guideme:${rootProject.guideme_version}:api"
     modLocalRuntime "curse.maven:mekanism-268560:7904058"

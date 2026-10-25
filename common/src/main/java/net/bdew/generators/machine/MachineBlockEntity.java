@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.Fluids;
 import java.util.*;
 
-public final class MachineBlockEntity extends BlockEntity implements MenuProvider {
+public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public final ResourceBuffer[] buffers = {new ResourceBuffer(32000), new ResourceBuffer(32000), new ResourceBuffer(32000), new ResourceBuffer(32000)};
     public final SimpleContainer inventory = new SimpleContainer(4) { @Override public boolean canPlaceItem(int slot, ItemStack stack) { return kind()==MachineKind.SYNGAS_CONTROLLER && carbonValue(stack)>0; } };
     public long energy, energyCapacity;
