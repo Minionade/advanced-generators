@@ -3,6 +3,7 @@ package net.bdew.generators.machine;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bdew.generators.Generators;
+import net.bdew.generators.platform.TransferPlatform;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -18,6 +19,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  */
 public final class MachineBorderRenderer implements BlockEntityRenderer<MachineBlockEntity> {
     private static final ResourceLocation EDGE = Generators.id("textures/block/connected/edge.png");
+    private static final ResourceLocation OUTPUT = Generators.id("textures/block/connected/output.png");
+    private static final ResourceLocation ARROW = Generators.id("textures/block/connected/arrow.png");
     private static final float EDGE_SIZE = 1.0f / 16.0f;
     private static final float EXPANSION = 1.001f;
 
@@ -30,30 +33,49 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         var level = machine.getLevel();
         var pos = machine.getBlockPos();
         var consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE));
+        var outputConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(OUTPUT));
+        var arrowConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW));
+        boolean[] outputs = new boolean[Direction.values().length];
+        if (machine.kind().output()) {
+            for (Direction direction : Direction.values()) {
+                outputs[direction.ordinal()] = !connects(machine, pos.relative(direction))
+                    && TransferPlatform.canOutputOn(machine, direction);
+            }
+        }
         for (Direction face : Direction.values()) {
             BlockPos outside = pos.relative(face);
-            if (level.getBlockState(outside).isSolidRender(level, outside)) continue;
+            boolean blocked = level.getBlockState(outside).isSolidRender(level, outside);
 
             Direction top = top(face);
             Direction right = right(face);
-            boolean u = !connects(machine, pos.relative(top));
-            boolean d = !connects(machine, pos.relative(top.getOpposite()));
-            boolean l = !connects(machine, pos.relative(right.getOpposite()));
-            boolean r = !connects(machine, pos.relative(right));
+            if (!blocked) {
+                boolean u = !connects(machine, pos.relative(top));
+                boolean d = !connects(machine, pos.relative(top.getOpposite()));
+                boolean l = !connects(machine, pos.relative(right.getOpposite()));
+                boolean r = !connects(machine, pos.relative(right));
 
-            if (u) drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
-            if (d) drawRect(stack, consumer, face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
-            if (l) drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
-            if (r) drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
+                if (u) drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+                if (d) drawRect(stack, consumer, face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+                if (l) drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
+                if (r) drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
 
-            if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
-                drawRect(stack, consumer, face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
-            if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
-                drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
-            if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
-                drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
-            if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
-                drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
+                if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
+                    drawRect(stack, consumer, face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+                if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
+                    drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
+                if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
+                    drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+                if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
+                    drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
+            }
+
+            // BdLib's model enhancer places the output badge on its connected
+            // face and puts a direction arrow on each perpendicular face.
+            if (outputs[face.ordinal()]) drawOverlay(stack, outputConsumer, face, 0, packedLight, packedOverlay);
+            if (!blocked && outputs[top.ordinal()]) drawOverlay(stack, arrowConsumer, face, 0, packedLight, packedOverlay);
+            if (!blocked && outputs[right.ordinal()]) drawOverlay(stack, arrowConsumer, face, 1, packedLight, packedOverlay);
+            if (!blocked && outputs[top.getOpposite().ordinal()]) drawOverlay(stack, arrowConsumer, face, 2, packedLight, packedOverlay);
+            if (!blocked && outputs[right.getOpposite().ordinal()]) drawOverlay(stack, arrowConsumer, face, 3, packedLight, packedOverlay);
         }
     }
 
@@ -103,6 +125,30 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
             out.addVertex(pose.pose(), x, y, z)
                 .setColor(255, 255, 255, 255)
                 .setUv(uvs[i][0], uvs[i][1])
+                .setOverlay(overlay)
+                .setLight(light)
+                .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
+        }
+    }
+
+    private static void drawOverlay(PoseStack stack, VertexConsumer out, Direction face,
+                                    int rotation, int light, int overlay) {
+        float[][] uv = switch (rotation) {
+            case 1 -> new float[][]{{1,0},{1,1},{0,1},{0,0}};
+            case 2 -> new float[][]{{1,1},{0,1},{0,0},{1,0}};
+            case 3 -> new float[][]{{0,1},{0,0},{1,0},{1,1}};
+            default -> new float[][]{{0,0},{1,0},{1,1},{0,1}};
+        };
+        float[][] positions = {point(face,0,0), point(face,1,0), point(face,1,1), point(face,0,1)};
+        var pose = stack.last();
+        for (int i = 0; i < 4; i++) {
+            float[] p = positions[i];
+            float x = (p[0] - .5f) * EXPANSION + .5f;
+            float y = (p[1] - .5f) * EXPANSION + .5f;
+            float z = (p[2] - .5f) * EXPANSION + .5f;
+            out.addVertex(pose.pose(), x, y, z)
+                .setColor(255, 255, 255, 255)
+                .setUv(uv[i][0], uv[i][1])
                 .setOverlay(overlay)
                 .setLight(light)
                 .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());

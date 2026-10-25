@@ -62,6 +62,26 @@ public final class FabricTransfers {
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
         var core=machine.controller();return core==null||!core.outputEnabled(side)?null:new EnergyBufferStorage(core,side,machine.kind());
     }
+    public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
+        var level=machine.getLevel();
+        if(level==null||side==null||machine.controller()==null||!machine.outputEnabled(side))return false;
+        if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
+        var targetPos=machine.getBlockPos().relative(side);
+        if(!level.hasChunkAt(targetPos))return false;
+        if(machine.kind().isEnergyOutput()) {
+            var target=EnergyStorage.SIDED.find(level,targetPos,side.getOpposite());
+            return target!=null&&target.supportsInsertion();
+        }
+        if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
+            var target=FluidStorage.SIDED.find(level,targetPos,side.getOpposite());
+            return target!=null&&target.supportsInsertion();
+        }
+        if(machine.kind()==MachineKind.ITEM_OUTPUT) {
+            var target=ItemStorage.SIDED.find(level,targetPos,side.getOpposite());
+            return target!=null&&target.supportsInsertion();
+        }
+        return false;
+    }
     public static void push(MachineBlockEntity module) {
         var level=module.getLevel();
         var core=module.controller();if(core==null)return;

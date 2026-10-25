@@ -30,6 +30,7 @@ public final class TransferPlatformImpl {
             public Object fluidStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.fluids(machine, side); }
             public Object itemStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.items(machine, side); }
             public Object energyStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.energy(machine, side); }
+            public boolean canOutputOn(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.canOutputOn(machine, side); }
         };
     }
     public static void registerCapabilities(net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent event) {
@@ -92,6 +93,26 @@ public final class TransferPlatformImpl {
             public int getMaxEnergyStored(){return(int)Math.min(Integer.MAX_VALUE,core.energyCapacity);}
             public boolean canExtract(){return core.outputEnabled(side)&&core.outputLimit[side.get3DDataValue()]>0;}public boolean canReceive(){return false;}
         };
+    }
+    public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
+        var level=machine.getLevel();
+        if(level==null||side==null||machine.controller()==null||!machine.outputEnabled(side))return false;
+        if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
+        var targetPos=machine.getBlockPos().relative(side);
+        if(!level.hasChunkAt(targetPos))return false;
+        if(machine.kind().isEnergyOutput()) {
+            IEnergyStorage target=level.getCapability(Capabilities.EnergyStorage.BLOCK,targetPos,side.getOpposite());
+            return target!=null&&target.canReceive();
+        }
+        if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
+            IFluidHandler target=level.getCapability(Capabilities.FluidHandler.BLOCK,targetPos,side.getOpposite());
+            return target!=null;
+        }
+        if(machine.kind()==MachineKind.ITEM_OUTPUT) {
+            IItemHandler target=level.getCapability(Capabilities.ItemHandler.BLOCK,targetPos,side.getOpposite());
+            return target!=null;
+        }
+        return false;
     }
     private static final class NativeFluidHandler implements IFluidHandler {
         private final MachineBlockEntity core;private final int[] buffers;private final boolean fill,drain;

@@ -15,6 +15,7 @@ public final class TransferPlatformImpl {
             public Object fluidStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.fluids(machine,side);}
             public Object itemStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.items(machine,side);}
             public Object energyStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.energy(machine,side);}
+            public boolean canOutputOn(MachineBlockEntity machine,Direction side){return FabricTransfers.canOutputOn(machine,side);}
         };
     }
     private TransferPlatformImpl(){}

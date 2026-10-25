@@ -13,6 +13,7 @@ public final class TransferPlatform {
         Object fluidStorage(MachineBlockEntity machine, Direction side);
         Object itemStorage(MachineBlockEntity machine, Direction side);
         Object energyStorage(MachineBlockEntity machine, Direction side);
+        boolean canOutputOn(MachineBlockEntity machine, Direction side);
     }
 
     private static volatile Provider provider;
@@ -34,4 +35,5 @@ public final class TransferPlatform {
     public static Object fluidStorage(MachineBlockEntity machine, Direction side) { return provider().fluidStorage(machine, side); }
     public static Object itemStorage(MachineBlockEntity machine, Direction side) { return provider().itemStorage(machine, side); }
     public static Object energyStorage(MachineBlockEntity machine, Direction side) { return provider().energyStorage(machine, side); }
+    public static boolean canOutputOn(MachineBlockEntity machine, Direction side) { return provider().canOutputOn(machine, side); }
 }
