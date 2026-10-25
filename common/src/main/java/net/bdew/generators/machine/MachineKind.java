@@ -21,7 +21,18 @@ public enum MachineKind {
     public boolean controller() { return category.equals("controller"); }
     public boolean output() { return isEnergyOutput() || this == FLUID_OUTPUT_SELECT || this == ITEM_OUTPUT; }
     public boolean isEnergyOutput() { return category.equals("powerOutput"); }
+    public boolean isEuOutput() { return name().startsWith("EU_OUTPUT_"); }
+    public int euOutputRate() {
+        return switch (this) {
+            case EU_OUTPUT_LV -> 32;
+            case EU_OUTPUT_MV -> 128;
+            case EU_OUTPUT_HV -> 512;
+            case EU_OUTPUT_EV -> 2048;
+            case EU_OUTPUT_IV -> 8192;
+            default -> 0;
+        };
+    }
     /** Only these legacy blocks stored a facing direction in their block state. */
-    public boolean hasFacing() { return this == SENSOR || name().startsWith("EU_OUTPUT_"); }
+    public boolean hasFacing() { return this == SENSOR || isEuOutput(); }
     public boolean hasPoweredState() { return this == CONTROL || this == SENSOR; }
 }

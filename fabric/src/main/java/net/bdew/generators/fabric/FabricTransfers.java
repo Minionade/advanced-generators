@@ -60,7 +60,7 @@ public final class FabricTransfers {
     public static EnergyStorage energy(MachineBlockEntity machine,Direction side) {
         if(!machine.kind().isEnergyOutput()||side==null)return null;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
-        var core=machine.controller();return core==null||!core.outputEnabled(side)?null:new EnergyBufferStorage(core,side);
+        var core=machine.controller();return core==null||!core.outputEnabled(side)?null:new EnergyBufferStorage(core,side,machine.kind());
     }
     public static void push(MachineBlockEntity module) {
         var level=module.getLevel();
@@ -71,8 +71,14 @@ public final class FabricTransfers {
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
             if(module.kind().isEnergyOutput()) {
                 var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
-                long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
-                if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
+                if(module.kind().isEuOutput()) {
+                    long movedEu=Math.min(module.kind().euOutputRate(),Math.max(0,core.outputLimit[side.get3DDataValue()])/4);
+                    movedEu=Math.min(movedEu,core.energy/4);
+                    if(movedEu>0){long accepted=destination.insert(movedEu,null);if(accepted>0)core.extractEnergy(accepted*4,false);}
+                } else {
+                    long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
+                    if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
+                }
             } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
                 var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
                 if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,81000,null);
