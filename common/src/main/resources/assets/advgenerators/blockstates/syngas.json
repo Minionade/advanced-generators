@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "level=0": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=1": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=2": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=3": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=4": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=5": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=6": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=7": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=8": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=9": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=10": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=11": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=12": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=13": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=14": {
+      "model": "advgenerators:block/syngas"
+    },
+    "level=15": {
+      "model": "advgenerators:block/syngas"
+    }
+  }
+}

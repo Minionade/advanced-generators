@@ -10,7 +10,7 @@
       "tag": "c:nuggets/gold"
     },
     "R": {
-      "items": "advgenerators:turbine_rotor_tier1"
+      "item": "advgenerators:turbine_rotor_tier1"
     }
   },
   "result": {

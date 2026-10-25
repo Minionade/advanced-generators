@@ -10,7 +10,7 @@
       "tag": "c:alloys/elite"
     },
     "R": {
-      "items": "advgenerators:upgrade_kit"
+      "item": "advgenerators:upgrade_kit"
     }
   },
   "result": {

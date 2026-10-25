@@ -7,7 +7,7 @@
   ],
   "key": {
     "X": {
-      "items": "advgenerators:power_capacitor_tier2"
+      "item": "advgenerators:power_capacitor_tier2"
     },
     "I": {
       "tag": "c:alloys/ultimate"

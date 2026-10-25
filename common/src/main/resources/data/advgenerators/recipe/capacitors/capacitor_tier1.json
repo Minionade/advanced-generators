@@ -7,10 +7,10 @@
   ],
   "key": {
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "W": {
-      "items": "advgenerators:iron_wiring"
+      "item": "advgenerators:iron_wiring"
     },
     "R": {
       "tag": "c:storage_blocks/redstone"

@@ -10,7 +10,7 @@
       "tag": "c:ingots/invar"
     },
     "R": {
-      "items": "advgenerators:turbine_rotor_tier3"
+      "item": "advgenerators:turbine_rotor_tier3"
     }
   },
   "result": {

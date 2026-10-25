@@ -10,7 +10,7 @@
       "tag": "c:ingots/bronze"
     },
     "R": {
-      "items": "advgenerators:turbine_rotor_tier2"
+      "item": "advgenerators:turbine_rotor_tier2"
     }
   },
   "result": {

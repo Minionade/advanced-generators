@@ -7,7 +7,7 @@
   ],
   "key": {
     "X": {
-      "items": "advgenerators:upgrade_kit"
+      "item": "advgenerators:upgrade_kit"
     },
     "I": {
       "tag": "c:ingots/electrum"

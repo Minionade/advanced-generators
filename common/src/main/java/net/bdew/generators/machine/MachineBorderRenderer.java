@@ -31,9 +31,6 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         if (machine.getLevel() == null) return;
         var level = machine.getLevel();
         var pos = machine.getBlockPos();
-        var consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE));
-        var outputConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(OUTPUT));
-        var arrowConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW));
         int[] outputs = new int[Direction.values().length];
         java.util.Arrays.fill(outputs, -1);
         if (machine.kind().output()) {
@@ -53,28 +50,28 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
                 boolean l = !connects(machine, pos.relative(right.getOpposite()));
                 boolean r = !connects(machine, pos.relative(right));
 
-                if (u) drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
-                if (d) drawRect(stack, consumer, face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
-                if (l) drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
-                if (r) drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
+                if (u) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+                if (d) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+                if (l) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
+                if (r) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
 
                 if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
-                    drawRect(stack, consumer, face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
                 if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
-                    drawRect(stack, consumer, face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
                 if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
-                    drawRect(stack, consumer, face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
                 if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
-                    drawRect(stack, consumer, face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
             }
 
             // BdLib's model enhancer places the output badge on its connected
             // face and puts a direction arrow on each perpendicular face.
-            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, outputConsumer, face, 0, outputs[face.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 0, outputs[top.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 1, outputs[right.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 2, outputs[top.getOpposite().ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 3, outputs[right.getOpposite().ordinal()], packedLight, packedOverlay);
+            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(OUTPUT)), face, 0, outputs[face.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 0, outputs[top.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 1, outputs[right.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 2, outputs[top.getOpposite().ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 3, outputs[right.getOpposite().ordinal()], packedLight, packedOverlay);
         }
     }
 

@@ -10,7 +10,7 @@
       "tag": "c:ingots/iron"
     },
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     }
   },
   "result": {

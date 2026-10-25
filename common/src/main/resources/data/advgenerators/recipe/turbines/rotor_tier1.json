@@ -10,7 +10,7 @@
       "tag": "c:ingots/iron"
     },
     "B": {
-      "items": "advgenerators:turbine_blade"
+      "item": "advgenerators:turbine_blade"
     }
   },
   "result": {

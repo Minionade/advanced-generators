@@ -7,10 +7,10 @@
   ],
   "key": {
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "H": {
-      "items": "minecraft:hopper"
+      "item": "minecraft:hopper"
     }
   },
   "result": {

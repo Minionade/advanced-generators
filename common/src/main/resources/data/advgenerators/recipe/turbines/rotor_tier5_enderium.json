@@ -10,7 +10,7 @@
       "tag": "c:ingots/enderium"
     },
     "R": {
-      "items": "advgenerators:turbine_rotor_tier4"
+      "item": "advgenerators:turbine_rotor_tier4"
     }
   },
   "result": {

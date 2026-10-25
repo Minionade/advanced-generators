@@ -7,19 +7,19 @@
   ],
   "key": {
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "P": {
-      "items": "advgenerators:iron_tubing"
+      "item": "advgenerators:iron_tubing"
     },
     "W": {
-      "items": "advgenerators:iron_wiring"
+      "item": "advgenerators:iron_wiring"
     },
     "C": {
-      "items": "advgenerators:controller"
+      "item": "advgenerators:controller"
     },
     "V": {
-      "items": "advgenerators:pressure_valve"
+      "item": "advgenerators:pressure_valve"
     }
   },
   "result": {

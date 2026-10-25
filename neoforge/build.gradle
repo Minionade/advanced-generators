@@ -4,6 +4,7 @@ architectury {
     neoForge()
 }
 repositories {
+    mavenCentral { content { includeGroup 'org.appliedenergistics' } }
     maven { url = 'https://www.cursemaven.com' }
     maven { url = 'https://api.modrinth.com/maven' }
     maven {
@@ -27,10 +28,12 @@ dependencies {
     modCompileOnly "curse.maven:singularity-iteration-1617642:9299533"
     modCompileOnly "curse.maven:modern-industrialization-405388:8863289"
     modCompileOnly "dev.technici4n:GrandPower:3.0.0"
+    compileOnly "org.appliedenergistics:guideme:${rootProject.guideme_version}:api"
     modLocalRuntime "curse.maven:mekanism-268560:7904058"
     modLocalRuntime "curse.maven:singularity-iteration-1617642:9299533"
     modLocalRuntime "curse.maven:modern-industrialization-405388:8863289"
     modLocalRuntime "dev.technici4n:GrandPower:3.0.0"
+    modLocalRuntime "org.appliedenergistics:guideme:${rootProject.guideme_version}"
     modLocalRuntime "maven.modrinth:z3Aj5eOl:VSfBR0IB" // BuildCraft Community Edition 8.0.22
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }

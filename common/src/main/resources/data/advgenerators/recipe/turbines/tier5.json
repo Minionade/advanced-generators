@@ -7,16 +7,16 @@
   ],
   "key": {
     "R": {
-      "items": "advgenerators:turbine_rotor_tier5"
+      "item": "advgenerators:turbine_rotor_tier5"
     },
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "W": {
-      "items": "advgenerators:iron_wiring"
+      "item": "advgenerators:iron_wiring"
     },
     "P": {
-      "items": "advgenerators:iron_tubing"
+      "item": "advgenerators:iron_tubing"
     }
   },
   "result": {

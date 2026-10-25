@@ -2,6 +2,7 @@ package net.bdew.generators;
 
 import dev.architectury.core.fluid.ArchitecturyFlowingFluid;
 import dev.architectury.core.fluid.SimpleArchitecturyFluidAttributes;
+import dev.architectury.platform.Platform;
 import dev.architectury.registry.CreativeTabRegistry;
 import dev.architectury.registry.menu.MenuRegistry;
 import dev.architectury.registry.registries.DeferredRegister;
@@ -36,6 +37,7 @@ public final class ModContent {
     public static final Map<String, FluidDef> GASES = new LinkedHashMap<>();
     static {
         for (var kind : MachineKind.values()) {
+            if (kind.isEuOutput() && !euEnergyApiLoaded()) continue;
             var block = BLOCKS.register(kind.id(), () -> MachineBlock.create(kind)); MACHINES.put(kind, block);
             ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new MachineBlockItem(block.get(), kind)));
         }
@@ -59,6 +61,10 @@ public final class ModContent {
 
     public static void register() {
         FLUIDS.register(); BLOCKS.register(); ITEMS.register(); ENTITIES.register(); MENUS.register(); TYPES.register(); SERIALIZERS.register(); TABS.register();
+    }
+    private static boolean euEnergyApiLoaded() {
+        if (Platform.isFabric()) return Platform.isModLoaded("team_reborn_energy");
+        return Platform.isModLoaded("modern_industrialization") || Platform.isModLoaded("mio_icif");
     }
     public static final class FluidDef {
         public final RegistrySupplier<Fluid> source, flowing;

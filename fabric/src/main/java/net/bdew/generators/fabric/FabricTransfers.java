@@ -17,17 +17,26 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import team.reborn.energy.api.EnergyStorage;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class FabricTransfers {
+    public interface EnergyIntegration {
+        void register(net.minecraft.world.level.block.entity.BlockEntityType<MachineBlockEntity> type);
+        Object storage(MachineBlockEntity machine,Direction side);
+        boolean canOutputOn(MachineBlockEntity machine,Direction side);
+        void push(MachineBlockEntity module);
+    }
+    private static EnergyIntegration energyIntegration;
     private FabricTransfers() {}
     public static void register() {
         var type=ModContent.MACHINE_ENTITY.get();
         FluidStorage.SIDED.registerForBlockEntity((be,side)->fluids(be,side),type);
         ItemStorage.SIDED.registerForBlockEntity((be,side)->items(be,side),type);
-        EnergyStorage.SIDED.registerForBlockEntity((be,side)->energy(be,side),type);
+    }
+    public static void installEnergyIntegration(EnergyIntegration integration) {
+        energyIntegration=integration;
+        integration.register(ModContent.MACHINE_ENTITY.get());
     }
     public static Storage<FluidVariant> fluids(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT || machine.kind()==MachineKind.ITEM_OUTPUT || machine.kind()==MachineKind.FE_OUTPUT) {
@@ -57,21 +66,16 @@ public final class FabricTransfers {
         for(int slot:core.inputSlots())parts.add(new ItemBufferStorage(core,slot,true,false));
         return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
     }
-    public static EnergyStorage energy(MachineBlockEntity machine,Direction side) {
-        if(!machine.kind().isEnergyOutput()||side==null)return null;
-        if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
-        var core=machine.controller();return core==null||!machine.outputEnabled(side)?null:new EnergyBufferStorage(core,machine,side,machine.kind());
+    public static Object energy(MachineBlockEntity machine,Direction side) {
+        return energyIntegration==null?null:energyIntegration.storage(machine,side);
     }
     public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
         var level=machine.getLevel();
         if(level==null||side==null||!machine.kind().output()||machine.controller()==null)return false;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
+        if(machine.kind().isEnergyOutput())return energyIntegration!=null&&energyIntegration.canOutputOn(machine,side);
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;
-        if(machine.kind().isEnergyOutput()) {
-            var target=EnergyStorage.SIDED.find(level,targetPos,side.getOpposite());
-            return target!=null&&target.supportsInsertion();
-        }
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var target=FluidStorage.SIDED.find(level,targetPos,side.getOpposite());
             return target!=null&&target.supportsInsertion();
@@ -83,23 +87,17 @@ public final class FabricTransfers {
         return false;
     }
     public static void push(MachineBlockEntity module) {
+        if(module.kind().isEnergyOutput()) {
+            if(energyIntegration!=null)energyIntegration.push(module);
+            return;
+        }
         var level=module.getLevel();
         var core=module.controller();if(core==null)return;
         for(Direction side:Direction.values()) {
             if(module.kind().hasFacing()&&module.getBlockState().getValue(BlockStateProperties.FACING)!=side)continue;
             if(!module.outputEnabled(side))continue;
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
-            if(module.kind().isEnergyOutput()) {
-                var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
-                if(module.kind().isEuOutput()) {
-                    long movedEu=Math.min(module.kind().euOutputRate(),Math.max(0,core.outputLimit(module,side))/4);
-                    movedEu=Math.min(movedEu,core.energy/4);
-                    if(movedEu>0){long accepted=destination.insert(movedEu,null);if(accepted>0){core.extractEnergy(accepted*4,false);core.recordOutput(module,side,accepted);}}
-                } else {
-                    long moved=core.extractEnergy(Math.min(core.outputLimit(module,side),Integer.MAX_VALUE),true);
-                    if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0){core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}}
-                }
-            } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
+            if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
                 var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
                 if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,81000,null);core.recordOutput(module,side,moved);}
             } else if(module.kind()==MachineKind.ITEM_OUTPUT) {

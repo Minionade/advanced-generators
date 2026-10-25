@@ -25,7 +25,7 @@ public final class MachineRecipe implements Recipe<RecipeInput> {
     public final Ingredient ingredient;
     public MachineRecipe(String kind, JsonObject json) {
         this.kind = kind; this.json = json;
-        ingredient = kind.equals("carbon_source") ? Ingredient.CODEC_NONEMPTY.parse(JsonOps.INSTANCE, json.get("items")).getOrThrow() : Ingredient.EMPTY;
+        ingredient = kind.equals("carbon_source") ? parseIngredient(json.get("items")) : Ingredient.EMPTY;
         switch (kind) {
             case "carbon_source" -> positive("carbonValue");
             case "liquid_fuel" -> { positive("fePerMb"); validateFluid(json.get("fuel")); }
@@ -34,7 +34,7 @@ public final class MachineRecipe implements Recipe<RecipeInput> {
                 var input = json.getAsJsonObject("input"); var output = json.getAsJsonObject("output");
                 positive(input, "amount"); positive(output, "amount");
                 if (input.has("fluids")) validateFluid(input.get("fluids"));
-                else Ingredient.CODEC_NONEMPTY.parse(JsonOps.INSTANCE, input.get("items")).getOrThrow();
+                else parseIngredient(input.has("items") ? input.get("items") : input.get("item"));
                 ResourceLocation.parse(output.get(output.has("item") ? "item" : "fluid").getAsString());
             }
             case "upgrade_kit" -> { for (var key : new String[]{"from", "to", "item"}) ResourceLocation.parse(json.get(key).getAsString()); }
@@ -42,6 +42,26 @@ public final class MachineRecipe implements Recipe<RecipeInput> {
         }
     }
     private void positive(String key) { positive(json, key); }
+    private static Ingredient parseIngredient(JsonElement element) {
+        return Ingredient.CODEC_NONEMPTY.parse(JsonOps.INSTANCE, normalizeIngredient(element)).getOrThrow();
+    }
+    private static JsonElement normalizeIngredient(JsonElement element) {
+        if (element == null || !element.isJsonObject()) {
+            if (element != null && element.isJsonArray()) {
+                var result = new JsonArray();
+                for (var child : element.getAsJsonArray()) result.add(normalizeIngredient(child));
+                return result;
+            }
+            return element;
+        }
+        var object = element.getAsJsonObject();
+        if (object.has("items") && object.get("items").isJsonPrimitive() && object.get("items").getAsJsonPrimitive().isString()) {
+            var normalized = object.deepCopy();
+            normalized.add("item", normalized.remove("items"));
+            return normalized;
+        }
+        return object;
+    }
     private static void positive(JsonObject obj, String key) {
         double value = obj.get(key).getAsDouble();
         if (!Double.isFinite(value) || value <= 0) throw new IllegalArgumentException(key + " must be positive and finite");
@@ -62,9 +82,9 @@ public final class MachineRecipe implements Recipe<RecipeInput> {
     }
     public boolean matchesInput(boolean item, ResourceLocation id, DataComponentPatch components) {
         var input = json.getAsJsonObject("input");
-        if (item && input.has("items")) {
+        if (item && (input.has("items") || input.has("item"))) {
             var stack = new ItemStack(BuiltInRegistries.ITEM.get(id)); stack.applyComponents(components);
-            return Ingredient.CODEC_NONEMPTY.parse(JsonOps.INSTANCE, input.get("items")).getOrThrow().test(stack);
+            return parseIngredient(input.has("items") ? input.get("items") : input.get("item")).test(stack);
         }
         return !item && input.has("fluids") && matchesFluid(input.get("fluids"), BuiltInRegistries.FLUID.get(id));
     }

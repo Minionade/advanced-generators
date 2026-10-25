@@ -7,7 +7,7 @@
   ],
   "key": {
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "R": {
       "tag": "c:dusts/redstone"

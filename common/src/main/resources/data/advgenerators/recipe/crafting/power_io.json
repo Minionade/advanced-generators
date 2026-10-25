@@ -13,7 +13,7 @@
       "tag": "c:dusts/redstone"
     },
     "T": {
-      "items": "minecraft:piston"
+      "item": "minecraft:piston"
     }
   },
   "result": {

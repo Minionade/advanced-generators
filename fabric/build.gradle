@@ -17,7 +17,8 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
     modImplementation "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
-    modImplementation include("teamreborn:energy:${rootProject.energy_version}")
+    modCompileOnly "teamreborn:energy:${rootProject.energy_version}"
+    modLocalRuntime "teamreborn:energy:${rootProject.energy_version}"
     modCompileOnly "mezz.jei:jei-1.21.1-fabric-api:${rootProject.jei_version}"
     modLocalRuntime "mezz.jei:jei-1.21.1-fabric:${rootProject.jei_version}"
     modLocalRuntime "maven.modrinth:3eMENr4V:CNwZZ4FD" // Tech Reborn 5.11.19

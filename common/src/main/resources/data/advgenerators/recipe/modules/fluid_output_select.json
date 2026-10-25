@@ -10,10 +10,10 @@
       "tag": "c:ingots/iron"
     },
     "F": {
-      "items": "advgenerators:iron_frame"
+      "item": "advgenerators:iron_frame"
     },
     "W": {
-      "items": "advgenerators:iron_tubing"
+      "item": "advgenerators:iron_tubing"
     }
   },
   "result": {

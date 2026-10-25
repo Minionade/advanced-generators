@@ -7,7 +7,7 @@
   ],
   "key": {
     "X": {
-      "items": "advgenerators:power_capacitor_tier1"
+      "item": "advgenerators:power_capacitor_tier1"
     },
     "I": {
       "tag": "c:alloys/advanced"

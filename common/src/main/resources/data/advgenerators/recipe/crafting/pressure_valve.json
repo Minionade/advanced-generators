@@ -10,7 +10,7 @@
       "tag": "c:ingots/iron"
     },
     "W": {
-      "items": "advgenerators:iron_tubing"
+      "item": "advgenerators:iron_tubing"
     }
   },
   "result": {

@@ -8,7 +8,7 @@
       "tag": "c:ingots/netherite"
     },
     "V": {
-      "items": "advgenerators:pressure_valve"
+      "item": "advgenerators:pressure_valve"
     }
   },
   "result": {
