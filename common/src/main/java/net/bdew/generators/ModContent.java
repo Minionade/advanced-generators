@@ -58,7 +58,7 @@ public final class ModContent {
         .displayItems((parameters, output) -> ALL_ITEMS.values().forEach(item -> output.accept(item.get())))));
 
     public static void register() {
-        BLOCKS.register(); ITEMS.register(); FLUIDS.register(); ENTITIES.register(); MENUS.register(); TYPES.register(); SERIALIZERS.register(); TABS.register();
+        FLUIDS.register(); BLOCKS.register(); ITEMS.register(); ENTITIES.register(); MENUS.register(); TYPES.register(); SERIALIZERS.register(); TABS.register();
     }
     public static final class FluidDef {
         public final RegistrySupplier<Fluid> source, flowing;
