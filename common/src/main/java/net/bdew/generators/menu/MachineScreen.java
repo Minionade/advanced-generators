@@ -105,7 +105,17 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             drawInfo(g,x,y,43,format(menu.rpm())+" RPM");
             drawInfo(g,x,y,54,"Out "+format(menu.generation())+" FE/t");
             drawInfo(g,x,y,65,(machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER?"Steam ":"Fuel ")+format(menu.consumption())+"/t");
+        } else if(machine.kind()==MachineKind.CONTROL) {
+            String[] actions={"disabled","useFuel","useSteam","generateEnergy","exchangeHeat","heatWater","mix"};
+            g.drawString(font,Component.translatable("advgenerators.control.action."+actions[menu.controlAction()]),x+8,y+61,0xff404040,false);
+            g.drawString(font,Component.translatable(menu.controlHigh()?"advgenerators.control.mode.high":"advgenerators.control.mode.low"),x+8,y+72,0xff404040,false);
+        } else if(machine.kind()==MachineKind.SENSOR) {
+            g.drawString(font,Component.literal("Metric: "+menu.sensorMetric()),x+8,y+61,0xff404040,false);
+            g.drawString(font,Component.literal("Threshold: "+sensorRule(menu.sensorCondition())),x+8,y+72,0xff404040,false);
         }
+    }
+    private static String sensorRule(int condition) {
+        return switch(condition) { case 0 -> "empty"; case 1 -> "> 0%"; case 2 -> "< 25%"; case 3 -> "< 50%"; case 4 -> "< 75%"; case 5 -> ">= 25%"; case 6 -> ">= 50%"; case 7 -> ">= 75%"; default -> "full"; };
     }
     private void drawInfo(GuiGraphics g,int x,int y,int row,String value) {
         g.drawString(font,Component.literal(value),x+93,y+row,0xff404040,false);
