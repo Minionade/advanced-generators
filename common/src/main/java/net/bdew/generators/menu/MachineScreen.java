@@ -70,7 +70,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private ResourceLocation sensorIcon() {
         var controller=menu.machine().controller();
         if(controller==null||menu.sensorMetric()==0)return Generators.id("textures/sensor/disabled.png");
-        String[][] choices=switch(controller.kind()) {
+        String[] choices=switch(controller.kind()) {
             case FUEL_TURBINE_CONTROLLER -> new String[]{"power","tank/fuel","power"};
             case STEAM_TURBINE_CONTROLLER -> new String[]{"power","tank/steam","turbine/turbine"};
             case SYNGAS_CONTROLLER -> new String[]{"tank/water","tank/fuel","tank/steam","tank/carbon","heat/heat"};
