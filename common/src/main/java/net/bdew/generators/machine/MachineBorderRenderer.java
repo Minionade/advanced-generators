@@ -3,7 +3,6 @@ package net.bdew.generators.machine;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bdew.generators.Generators;
-import net.bdew.generators.platform.TransferPlatform;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -35,11 +34,11 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         var consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE));
         var outputConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(OUTPUT));
         var arrowConsumer = buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW));
-        boolean[] outputs = new boolean[Direction.values().length];
+        int[] outputs = new int[Direction.values().length];
+        java.util.Arrays.fill(outputs, -1);
         if (machine.kind().output()) {
             for (Direction direction : Direction.values()) {
-                outputs[direction.ordinal()] = !connects(machine, pos.relative(direction))
-                    && TransferPlatform.canOutputOn(machine, direction);
+                if (!connects(machine, pos.relative(direction))) outputs[direction.ordinal()] = machine.outputIndex(machine, direction);
             }
         }
         for (Direction face : Direction.values()) {
@@ -71,11 +70,11 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
 
             // BdLib's model enhancer places the output badge on its connected
             // face and puts a direction arrow on each perpendicular face.
-            if (outputs[face.ordinal()]) drawOverlay(stack, outputConsumer, face, 0, packedLight, packedOverlay);
-            if (!blocked && outputs[top.ordinal()]) drawOverlay(stack, arrowConsumer, face, 0, packedLight, packedOverlay);
-            if (!blocked && outputs[right.ordinal()]) drawOverlay(stack, arrowConsumer, face, 1, packedLight, packedOverlay);
-            if (!blocked && outputs[top.getOpposite().ordinal()]) drawOverlay(stack, arrowConsumer, face, 2, packedLight, packedOverlay);
-            if (!blocked && outputs[right.getOpposite().ordinal()]) drawOverlay(stack, arrowConsumer, face, 3, packedLight, packedOverlay);
+            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, outputConsumer, face, 0, outputs[face.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 0, outputs[top.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 1, outputs[right.ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 2, outputs[top.getOpposite().ordinal()], packedLight, packedOverlay);
+            if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, arrowConsumer, face, 3, outputs[right.getOpposite().ordinal()], packedLight, packedOverlay);
         }
     }
 
@@ -132,7 +131,9 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
     }
 
     private static void drawOverlay(PoseStack stack, VertexConsumer out, Direction face,
-                                    int rotation, int light, int overlay) {
+                                    int rotation, int colorIndex, int light, int overlay) {
+        int[][] colors={{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255}};
+        int[] color=colors[Math.floorMod(colorIndex,colors.length)];
         float[][] uv = switch (rotation) {
             case 1 -> new float[][]{{1,0},{1,1},{0,1},{0,0}};
             case 2 -> new float[][]{{1,1},{0,1},{0,0},{1,0}};
@@ -147,7 +148,7 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
             float y = (p[1] - .5f) * EXPANSION + .5f;
             float z = (p[2] - .5f) * EXPANSION + .5f;
             out.addVertex(pose.pose(), x, y, z)
-                .setColor(255, 255, 255, 255)
+                .setColor(color[0], color[1], color[2], 255)
                 .setUv(uv[i][0], uv[i][1])
                 .setOverlay(overlay)
                 .setLight(light)

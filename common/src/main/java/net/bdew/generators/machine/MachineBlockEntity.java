@@ -42,6 +42,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public boolean controlHigh = true;
     public final int[] outputMode = new int[6], outputSelection = new int[6];
     public final long[] outputLimit = new long[6];
+    private final LinkedHashMap<OutputFace, OutputConfig> outputConfigs = new LinkedHashMap<>();
     private final double[] steamHistory = new double[20];
     private int steamIndex;
     private final RollingAverage generationAverage = new RollingAverage();
@@ -57,6 +58,26 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         Arrays.fill(outputLimit, Integer.MAX_VALUE);
         inventory.addListener(c -> setChanged());
     }
+    public record OutputFace(long position, Direction direction) {
+        public OutputFace(BlockPos position, Direction direction) { this(position.asLong(), direction); }
+        public BlockPos blockPos() { return BlockPos.of(position); }
+    }
+    public static final class OutputConfig {
+        public int mode, selection;
+        public long limit;
+        public double average;
+        private final double[] recent = new double[20];
+        private int next;
+        private double total;
+        private OutputConfig(int mode, int selection, long limit) {
+            this.mode = mode; this.selection = selection; this.limit = limit;
+        }
+        private void sample(double amount) {
+            total += amount - recent[next]; recent[next] = amount; next = (next + 1) % recent.length;
+            average = total / recent.length;
+        }
+    }
+    public record OutputFaceEntry(MachineKind kind, Direction direction, OutputConfig config) {}
     public MachineKind kind() { return ((MachineBlock)getBlockState().getBlock()).kind; }
     public void cacheNetwork(MultiblockNetwork network) { cachedNetwork = network; networkRevision = MultiblockNetwork.revision(level); networkTick = level.getGameTime(); }
     public MultiblockNetwork network() {
@@ -140,6 +161,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         var network = machine.network();
         if (machine.kind().controller()) {
             machine.recalculate();
+            machine.refreshOutputFaces();
             machine.generationRate = machine.consumptionRate = machine.processRate = machine.heatLossRate = machine.heatDeltaRate = 0;
             if (network.error() == 0) {
                 switch (machine.kind()) {
@@ -322,9 +344,84 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     }
     public boolean outputEnabled(Direction side) {
         if (!kind().output() || level==null) return false;
-        var config=controller(); if(config==null)return false;
-        int mode = config.outputMode[side.get3DDataValue()]; boolean signal = level.hasNeighborSignal(worldPosition);
+        var config=outputConfig(this, side); if(config==null)return false;
+        int mode = config.mode; boolean signal = level.hasNeighborSignal(worldPosition);
         return mode == 0 || mode == 1 && signal || mode == 2 && !signal;
+    }
+    public void refreshOutputFaces() {
+        if (level == null || level.isClientSide || !kind().controller()) return;
+        var members = members();
+        var liveModules = new HashSet<Long>();
+        var memberPositions = new HashSet<BlockPos>();
+        for (var module : members) memberPositions.add(module.getBlockPos());
+        for (var module : members) {
+            if (!module.kind().output()) continue;
+            liveModules.add(module.getBlockPos().asLong());
+            for (Direction direction : Direction.values()) {
+                BlockPos target = module.getBlockPos().relative(direction);
+                if (!level.hasChunkAt(target)) continue;
+                OutputFace face = new OutputFace(module.getBlockPos(), direction);
+                boolean available = !memberPositions.contains(target) && !target.equals(worldPosition)
+                    && TransferPlatform.canOutputOn(module, direction);
+                if (available) {
+                    outputConfigs.computeIfAbsent(face, key -> {
+                        int side = direction.get3DDataValue();
+                        return new OutputConfig(outputMode[side], outputSelection[side], outputLimit[side]);
+                    });
+                } else outputConfigs.remove(face);
+            }
+        }
+        outputConfigs.keySet().removeIf(face -> level.hasChunkAt(face.blockPos()) && !liveModules.contains(face.position()));
+        while (outputConfigs.size() > 6) outputConfigs.remove(outputConfigs.keySet().stream().reduce((a,b) -> b).orElseThrow());
+    }
+    private OutputConfig outputConfig(MachineBlockEntity module, Direction direction) {
+        var core = module.kind().controller() ? module : module.controller();
+        return core == null ? null : core.outputConfigs.get(new OutputFace(module.getBlockPos(), direction));
+    }
+    public List<OutputFaceEntry> outputEntries() {
+        var result = new ArrayList<OutputFaceEntry>();
+        for (var entry : outputConfigs.entrySet()) {
+            BlockPos pos = entry.getKey().blockPos();
+            if (level != null && level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof MachineBlockEntity module)
+                result.add(new OutputFaceEntry(module.kind(), entry.getKey().direction(), entry.getValue()));
+        }
+        return result;
+    }
+    public int outputIndex(MachineBlockEntity module, Direction direction) {
+        var core = module.kind().controller() ? module : module.controller();
+        if (core == null) return -1;
+        int index = 0;
+        for (var face : core.outputConfigs.keySet()) {
+            if (face.equals(new OutputFace(module.getBlockPos(), direction))) return index;
+            index++;
+        }
+        return -1;
+    }
+    public long outputLimit(MachineBlockEntity module, Direction direction) {
+        var config = outputConfig(module, direction); return config == null ? 0 : config.limit;
+    }
+    public int outputSelection(MachineBlockEntity module, Direction direction) {
+        var config = outputConfig(module, direction); return config == null ? 0 : config.selection;
+    }
+    public void setOutputMode(int row, int value) { outputEntry(row).ifPresent(entry -> entry.config().mode = value); }
+    public void cycleOutputSelection(int row) { outputEntry(row).ifPresent(entry -> entry.config().selection = (entry.config().selection + 1) % 3); }
+    public void cycleOutputLimit(int row) {
+        long[] limits = {8000, 32000, 128000, Integer.MAX_VALUE};
+        outputEntry(row).ifPresent(entry -> {
+            int index = outputLimitIndex(entry.config().limit);
+            entry.config().limit = limits[(index + 1) % limits.length];
+        });
+    }
+    private Optional<OutputFaceEntry> outputEntry(int row) {
+        var entries = outputEntries(); return row < 0 || row >= entries.size() ? Optional.empty() : Optional.of(entries.get(row));
+    }
+    private static int outputLimitIndex(long limit) {
+        if (limit <= 8000) return 0; if (limit <= 32000) return 1; if (limit <= 128000) return 2; return 3;
+    }
+    public int outputLimitIndex(int row) { return outputEntry(row).map(entry -> outputLimitIndex(entry.config().limit)).orElse(3); }
+    public void recordOutput(MachineBlockEntity module, Direction side, double amount) {
+        var config = outputConfig(module, side);
+        if (config != null && amount > 0) { config.sample(amount); setChanged(); }
     }
     public int[] inputSlots() { return kind() == MachineKind.SYNGAS_CONTROLLER || kind() == MachineKind.EXCHANGER_CONTROLLER ? new int[]{0,1} : new int[]{0}; }
     public int[] outputSlots(int selection) {
@@ -495,6 +592,15 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         tag.put("inventory",inventory.createTag(registries));
         tag.putInt("action",controlAction); tag.putBoolean("high",controlHigh); tag.putInt("metric",sensorMetric); tag.putInt("condition",sensorCondition);
         tag.putIntArray("outputMode",outputMode); tag.putIntArray("outputSelection",outputSelection); tag.putLongArray("outputLimit",outputLimit);
+        ListTag faces = new ListTag();
+        for (var entry : outputConfigs.entrySet()) {
+            var face = new CompoundTag();
+            face.putLong("position", entry.getKey().position()); face.putInt("direction", entry.getKey().direction().get3DDataValue());
+            face.putInt("mode", entry.getValue().mode); face.putInt("selection", entry.getValue().selection);
+            face.putLong("limit", entry.getValue().limit); face.putDouble("average", entry.getValue().average);
+            faces.add(face);
+        }
+        tag.put("outputConfigs", faces);
         if (lastExchangerInput != null) tag.putString("lastExchangerInput",lastExchangerInput.toString());
         if (lastExchangerOutput != null) tag.putString("lastExchangerOutput",lastExchangerOutput.toString());
         tag.putBoolean("lastExchangerInputItem",lastExchangerInputItem); tag.putBoolean("lastExchangerOutputItem",lastExchangerOutputItem);
@@ -513,6 +619,17 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
         lastExchangerOutput=ResourceLocation.tryParse(tag.getString("lastExchangerOutput"));
         lastExchangerInputItem=tag.getBoolean("lastExchangerInputItem"); lastExchangerOutputItem=tag.getBoolean("lastExchangerOutputItem");
         for(int i=0;i<6;i++) { outputMode[i]=i<modes.length?Math.clamp(modes[i],0,3):0; outputSelection[i]=i<selections.length?Math.clamp(selections[i],0,2):0; outputLimit[i]=i<limits.length?Math.clamp(limits[i],1,Integer.MAX_VALUE):Integer.MAX_VALUE; }
+        outputConfigs.clear();
+        for (var faceTag : tag.getList("outputConfigs", Tag.TAG_COMPOUND)) {
+            long position = faceTag.getLong("position");
+            int direction = faceTag.getInt("direction");
+            if (direction < 0 || direction >= Direction.values().length) continue;
+            var face = new OutputFace(position, Direction.from3DDataValue(direction));
+            var config = new OutputConfig(Math.clamp(faceTag.getInt("mode"),0,3), Math.clamp(faceTag.getInt("selection"),0,2), Math.clamp(faceTag.getLong("limit"),1,Integer.MAX_VALUE));
+            config.average = finite(faceTag,"average");
+            outputConfigs.put(face, config);
+            if (outputConfigs.size() == 6) break;
+        }
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { var tag=new CompoundTag();saveAdditional(tag,registries);return tag; }
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket() { return ClientboundBlockEntityDataPacket.create(this); }

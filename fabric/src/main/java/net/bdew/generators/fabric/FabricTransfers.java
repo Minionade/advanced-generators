@@ -34,7 +34,7 @@ public final class FabricTransfers {
             if(machine.kind()!=MachineKind.FLUID_OUTPUT_SELECT)return null;
             var core=machine.controller(); if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<FluidBufferStorage>();
-            for(int slot:core.outputSlots(core.outputSelection[side.get3DDataValue()]))parts.add(new FluidBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(core.outputSelection(machine,side)))parts.add(new FluidBufferStorage(core,slot,false,true));
             return new CombinedStorage<FluidVariant,FluidBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.FLUID_INPUT?machine.controller():null;
@@ -47,7 +47,7 @@ public final class FabricTransfers {
         if(machine.kind()==MachineKind.ITEM_OUTPUT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<ItemBufferStorage>();
-            for(int slot:core.outputSlots(core.outputSelection[side.get3DDataValue()]))parts.add(new ItemBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(core.outputSelection(machine,side)))parts.add(new ItemBufferStorage(core,slot,false,true));
             return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.ITEM_INPUT?machine.controller():null;
@@ -60,11 +60,11 @@ public final class FabricTransfers {
     public static EnergyStorage energy(MachineBlockEntity machine,Direction side) {
         if(!machine.kind().isEnergyOutput()||side==null)return null;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
-        var core=machine.controller();return core==null||!core.outputEnabled(side)?null:new EnergyBufferStorage(core,side,machine.kind());
+        var core=machine.controller();return core==null||!machine.outputEnabled(side)?null:new EnergyBufferStorage(core,machine,side,machine.kind());
     }
     public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
         var level=machine.getLevel();
-        if(level==null||side==null||machine.controller()==null||!machine.outputEnabled(side))return false;
+        if(level==null||side==null||!machine.kind().output()||machine.controller()==null)return false;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;
@@ -92,19 +92,19 @@ public final class FabricTransfers {
             if(module.kind().isEnergyOutput()) {
                 var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
                 if(module.kind().isEuOutput()) {
-                    long movedEu=Math.min(module.kind().euOutputRate(),Math.max(0,core.outputLimit[side.get3DDataValue()])/4);
+                    long movedEu=Math.min(module.kind().euOutputRate(),Math.max(0,core.outputLimit(module,side))/4);
                     movedEu=Math.min(movedEu,core.energy/4);
-                    if(movedEu>0){long accepted=destination.insert(movedEu,null);if(accepted>0)core.extractEnergy(accepted*4,false);}
+                    if(movedEu>0){long accepted=destination.insert(movedEu,null);if(accepted>0){core.extractEnergy(accepted*4,false);core.recordOutput(module,side,accepted);}}
                 } else {
-                    long moved=core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
-                    if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0)core.extractEnergy(accepted,false);}
+                    long moved=core.extractEnergy(Math.min(core.outputLimit(module,side),Integer.MAX_VALUE),true);
+                    if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0){core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}}
                 }
             } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
                 var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
-                if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,81000,null);
+                if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,81000,null);core.recordOutput(module,side,moved);}
             } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
                 var source=items(module,side);var destination=ItemStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
-                if(source!=null&&destination!=null)StorageUtil.move(source,destination,v->true,64,null);
+                if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,64,null);core.recordOutput(module,side,moved);}
             }
         }
     }

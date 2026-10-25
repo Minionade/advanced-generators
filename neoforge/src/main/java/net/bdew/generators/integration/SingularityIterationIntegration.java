@@ -23,23 +23,25 @@ public final class SingularityIterationIntegration {
                     && machine.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) != side) return null;
                 MachineBlockEntity core = machine.controller();
                 if (core == null) return null;
-                return new GeneratorEnergy(core, machine.kind(), side);
+                return new GeneratorEnergy(core, machine, machine.kind(), side);
             });
     }
 
     private static final class GeneratorEnergy implements IEUEnergyStorage.NoInsert {
         private final MachineBlockEntity core;
+        private final MachineBlockEntity module;
         private final MachineKind kind;
         private final Direction side;
 
-        private GeneratorEnergy(MachineBlockEntity core, MachineKind kind, Direction side) {
+        private GeneratorEnergy(MachineBlockEntity core, MachineBlockEntity module, MachineKind kind, Direction side) {
             this.core = core;
+            this.module = module;
             this.kind = kind;
             this.side = side;
         }
 
         private long outputRateEu() {
-            return Math.max(0, core.outputLimit[side.get3DDataValue()]) / FE_PER_EU;
+            return Math.max(0, core.outputLimit(machine, side)) / FE_PER_EU;
         }
 
         private CableTier tier() {
@@ -65,17 +67,17 @@ public final class SingularityIterationIntegration {
         }
         @Override public long receive(long amount, boolean simulate) { return 0; }
         @Override public long extract(long maxExtract, boolean simulate) {
-            if (maxExtract <= 0 || !core.kind().controller()) return 0;
+            if (maxExtract <= 0 || !module.outputEnabled(side)) return 0;
             long available = Math.max(0, core.energy / FE_PER_EU);
             long movedEu = Math.min(Math.min(maxExtract, available), Math.min(outputRateEu(), tier().powerRating));
-            if (!simulate && movedEu > 0) core.extractEnergy(movedEu * FE_PER_EU, false);
+            if (!simulate && movedEu > 0) { core.extractEnergy(movedEu * FE_PER_EU, false); core.recordOutput(module, side, movedEu); }
             return movedEu;
         }
         @Override public long getAmount() { return Math.max(0, core.energy / FE_PER_EU); }
         @Override public long getCapacity() { return Math.max(0, core.energyCapacity / FE_PER_EU); }
         @Override public boolean canReceive() { return false; }
         @Override public boolean canExtract() {
-            return core.energy >= FE_PER_EU && outputRateEu() > 0 && core.kind().controller();
+            return core.energy >= FE_PER_EU && outputRateEu() > 0 && module.outputEnabled(side);
         }
     }
 }

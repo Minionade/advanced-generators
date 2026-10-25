@@ -1,6 +1,7 @@
 package net.bdew.generators.menu;
 
 import net.bdew.generators.Generators;
+import net.bdew.generators.ModContent;
 import net.bdew.generators.machine.MachineKind;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -29,10 +30,10 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         if(outputConfigOpen) {
             int panelLeft=(width-124)/2, panelTop=(height-138)/2;
             int row=(int)Math.floor((mouseY-(panelTop+19))/19.0);
-            if(row>=0&&row<6&&mouseX>=panelLeft+25&&mouseX<panelLeft+77&&button==0) {
+            if(row>=0&&row<menu.outputCount()&&mouseX>=panelLeft+26&&mouseX<panelLeft+44&&button==0) {
                 clickMenuButton(row); return true;
             }
-            if(row>=0&&row<6&&mouseX>=panelLeft+79&&mouseX<panelLeft+112) {
+            if(row>=0&&row<menu.outputCount()&&mouseX>=panelLeft+94&&mouseX<panelLeft+117) {
                 if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&(button==0||button==1)) clickMenuButton(6+row);
                 else if((menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER)&&button==2) clickMenuButton(12+row);
                 return true;
@@ -68,22 +69,22 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         int x=(width-124)/2,y=(height-138)/2;
         g.blit(Generators.id("textures/gui/outputs.png"),x,y,0,0,124,138,256,256);
         g.drawString(font,Component.translatable("advgenerators.gui.output.title"),x+8,y+6,0xff404040,false);
-        int[][] colors={{0xffc94a4a},{0xff61b34b},{0xff5687d6},{0xffd7b63e},{0xff45bfc2},{0xffa65cc4}};
-        for(int side=0;side<6;side++) {
-            int rowY=y+19+side*19,mode=menu.outputMode(side);
-            g.fill(x+9,rowY+2,x+21,rowY+14,colors[side][0]);
+        for(int row=0;row<menu.outputCount();row++) {
+            int rowY=y+19+row*19,mode=menu.outputMode(row);
+            var outputItem=ModContent.ALL_ITEMS.get(menu.outputKind(row).id());
+            if(outputItem!=null)g.renderItem(new ItemStack(outputItem.get()),x+8,rowY+1);
             int iconU=switch(mode){case 1->37;case 2->21;case 3->69;default->53;};
-            drawAtlasButton(g,x+25,rowY,mouseX,mouseY,20,iconU,35);
-            String modeText=switch(mode){case 1->"Signal";case 2->"No sig";case 3->"Off";default->"Always";};
-            g.drawString(font,modeText,x+44,rowY+5,0xff303030,false);
+            drawAtlasButton(g,x+26,rowY,mouseX,mouseY,20,iconU,35);
+            g.drawString(font,menu.outputLabel(row),x+44,rowY+5,0xff303030,false);
+            g.drawString(font,format(menu.outputAverage(row)),x+72,rowY+5,0xff303030,false);
             if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER) {
-                drawAtlasButton(g,x+79,rowY,mouseX,mouseY,20,20,35);
-                String selection=switch(menu.outputSelection(side)){case 1->"Cold";case 2->"Hot";default->"Both";};
-                g.drawString(font,selection,x+98,rowY+5,0xff202020,false);
+                g.fill(x+94,rowY+1,x+117,rowY+17,0xffb0aaa0);
+                String selection=switch(menu.outputSelection(row)){case 1->"Cold";case 2->"Hot";default->"Both";};
+                g.drawCenteredString(font,selection,x+105,rowY+5,0xff202020);
             } else if(menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
-                drawAtlasButton(g,x+79,rowY,mouseX,mouseY,20,20,35);
-                String limit=switch(menu.outputLimitIndex(side)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";};
-                g.drawString(font,limit,x+98,rowY+5,0xff202020,false);
+                g.fill(x+94,rowY+1,x+117,rowY+17,0xffb0aaa0);
+                String limit=switch(menu.outputLimitIndex(row)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";};
+                g.drawCenteredString(font,limit,x+105,rowY+5,0xff202020);
             }
         }
     }
@@ -312,13 +313,15 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             drawOutputConfig(g,mx,my);
             int panelLeft=(width-124)/2,panelTop=(height-138)/2;
             int row=(int)Math.floor((my-(panelTop+19))/19.0);
-            if(row>=0&&row<6&&mx>=panelLeft+7&&mx<panelLeft+24&&my>=panelTop+19+row*19&&my<panelTop+37+row*19)
-                g.renderTooltip(font,Component.translatable("advgenerators.output."+row),mx,my);
-            else if(row>=0&&row<6&&mx>=panelLeft+25&&mx<panelLeft+77) {
+            if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+26&&mx<panelLeft+44) {
                 String mode=switch(menu.outputMode(row)){case 1->"Signal";case 2->"No sig";case 3->"Off";default->"Always";};
                 g.renderTooltip(font,Component.translatable("advgenerators.gui.output.mode",mode),mx,my);
             }
-            else if(row>=0&&row<6&&mx>=panelLeft+79&&mx<panelLeft+112) {
+            else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+44&&mx<panelLeft+71)
+                g.renderTooltip(font,Component.literal(menu.outputFullLabel(row)),mx,my);
+            else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+71&&mx<panelLeft+93)
+                g.renderTooltip(font,Component.literal(format(menu.outputAverage(row))+" "+menu.outputUnit(row)),mx,my);
+            else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+94&&mx<panelLeft+117) {
                 String key=menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER?"advgenerators.gui.output.selection":"advgenerators.gui.output.limit";
                 g.renderTooltip(font,Component.translatable(key),mx,my);
             }

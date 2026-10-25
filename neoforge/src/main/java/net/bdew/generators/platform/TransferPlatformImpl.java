@@ -48,14 +48,14 @@ public final class TransferPlatformImpl {
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
             if(module.kind().isEnergyOutput()) {
                 IEnergyStorage dst=level.getCapability(Capabilities.EnergyStorage.BLOCK,target.getBlockPos(),side.getOpposite());if(dst==null||!dst.canReceive())continue;
-                int moved=(int)core.extractEnergy(Math.min(core.outputLimit[side.get3DDataValue()],Integer.MAX_VALUE),true);
-                if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0)core.extractEnergy(accepted,false);}
+                int moved=(int)core.extractEnergy(Math.min(core.outputLimit(module,side),Integer.MAX_VALUE),true);
+                if(moved>0){int accepted=dst.receiveEnergy(moved,false);if(accepted>0){core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}}
             } else if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
                 IFluidHandler src=fluids(module,side),dst=level.getCapability(Capabilities.FluidHandler.BLOCK,target.getBlockPos(),side.getOpposite());
-                if(src!=null&&dst!=null)for(int i=0;i<src.getTanks();i++){var stack=src.getFluidInTank(i);if(!stack.isEmpty()){var simulated=src.drain(stack, IFluidHandler.FluidAction.SIMULATE);int accepted=dst.fill(simulated,IFluidHandler.FluidAction.EXECUTE);if(accepted>0)src.drain(accepted,IFluidHandler.FluidAction.EXECUTE);}}
+                if(src!=null&&dst!=null)for(int i=0;i<src.getTanks();i++){var stack=src.getFluidInTank(i);if(!stack.isEmpty()){var simulated=src.drain(stack, IFluidHandler.FluidAction.SIMULATE);int accepted=dst.fill(simulated,IFluidHandler.FluidAction.EXECUTE);if(accepted>0){src.drain(accepted,IFluidHandler.FluidAction.EXECUTE);core.recordOutput(module,side,accepted);}}}
             } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
                 IItemHandler src=items(module,side),dst=level.getCapability(Capabilities.ItemHandler.BLOCK,target.getBlockPos(),side.getOpposite());
-                if(src!=null&&dst!=null)for(int i=0;i<src.getSlots();i++){var stack=src.extractItem(i,64,true);if(!stack.isEmpty()){var remainder=ItemHandlerHelper.insertItemStacked(dst,stack,false);if(remainder.getCount()<stack.getCount())src.extractItem(i,stack.getCount()-remainder.getCount(),false);}}
+                if(src!=null&&dst!=null)for(int i=0;i<src.getSlots();i++){var stack=src.extractItem(i,64,true);if(!stack.isEmpty()){var remainder=ItemHandlerHelper.insertItemStacked(dst,stack,false);if(remainder.getCount()<stack.getCount()){int moved=stack.getCount()-remainder.getCount();src.extractItem(i,moved,false);core.recordOutput(module,side,moved);}}}
             }
         }
     }
@@ -66,7 +66,7 @@ public final class TransferPlatformImpl {
     public static IFluidHandler fluids(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
-            return new NativeFluidHandler(core,core.outputSlots(core.outputSelection[side.get3DDataValue()]),false,true);
+            return new NativeFluidHandler(core,core.outputSlots(core.outputSelection(machine,side)),false,true);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.FLUID_INPUT?machine.controller():null;
         return core==null?null:new NativeFluidHandler(core,core.inputSlots(),true,false);
@@ -74,7 +74,7 @@ public final class TransferPlatformImpl {
     public static IItemHandler items(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.ITEM_OUTPUT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
-            return new NativeItemHandler(core,core.outputSlots(core.outputSelection[side.get3DDataValue()]),false,true);
+            return new NativeItemHandler(core,core.outputSlots(core.outputSelection(machine,side)),false,true);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.ITEM_INPUT?machine.controller():null;
         if(core==null)return null;
@@ -85,18 +85,18 @@ public final class TransferPlatformImpl {
         if(!machine.kind().isEnergyOutput()||side==null)return null;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return null;
         var core=machine.controller();if(core==null)return null;
-        if(!core.outputEnabled(side))return null;
+        if(!machine.outputEnabled(side))return null;
         return new IEnergyStorage(){
             public int receiveEnergy(int amount,boolean simulate){return 0;}
-            public int extractEnergy(int amount,boolean simulate){if(amount<=0||!core.outputEnabled(side))return 0;int moved=(int)Math.min(Math.min(amount,core.outputLimit[side.get3DDataValue()]),core.energy);if(!simulate&&moved>0)core.extractEnergy(moved,false);return moved;}
+            public int extractEnergy(int amount,boolean simulate){if(amount<=0||!machine.outputEnabled(side))return 0;int moved=(int)Math.min(Math.min(amount,core.outputLimit(machine,side)),core.energy);if(!simulate&&moved>0){core.extractEnergy(moved,false);core.recordOutput(machine,side,moved);}return moved;}
             public int getEnergyStored(){return(int)Math.min(Integer.MAX_VALUE,core.energy);}
             public int getMaxEnergyStored(){return(int)Math.min(Integer.MAX_VALUE,core.energyCapacity);}
-            public boolean canExtract(){return core.outputEnabled(side)&&core.outputLimit[side.get3DDataValue()]>0;}public boolean canReceive(){return false;}
+            public boolean canExtract(){return machine.outputEnabled(side)&&core.outputLimit(machine,side)>0;}public boolean canReceive(){return false;}
         };
     }
     public static boolean canOutputOn(MachineBlockEntity machine,Direction side) {
         var level=machine.getLevel();
-        if(level==null||side==null||machine.controller()==null||!machine.outputEnabled(side))return false;
+        if(level==null||side==null||!machine.kind().output()||machine.controller()==null)return false;
         if(machine.kind().hasFacing()&&machine.getBlockState().getValue(BlockStateProperties.FACING)!=side)return false;
         var targetPos=machine.getBlockPos().relative(side);
         if(!level.hasChunkAt(targetPos))return false;

@@ -14,7 +14,7 @@ import net.minecraft.world.item.ItemStack;
 /** Server-authoritative menu. All contents and gauges are synchronized by vanilla menu slots/data. */
 public final class MachineMenu extends AbstractContainerMenu {
     private static final int SYNC_CHUNKS = 3;
-    private static final int MACHINE_VALUES = 59;
+    private static final int MACHINE_VALUES = 95;
     private final MachineBlockEntity machine;
     private final ContainerData data;
     private final int[] clientData = new int[MACHINE_VALUES * SYNC_CHUNKS];
@@ -43,6 +43,7 @@ public final class MachineMenu extends AbstractContainerMenu {
         for(int col=0;col<9;col++) addSlot(new Slot(playerInventory,col,8+col*18,152));
     }
     private int serverValue(int i) {
+        if (i >= 59) return outputData((i - 59) / 6, (i - 59) % 6);
         return switch(i) {
                     case 0 -> (int)(machine.energy & 0x7fffffff);
                     case 1 -> (int)(machine.energy >>> 31);
@@ -85,6 +86,20 @@ public final class MachineMenu extends AbstractContainerMenu {
                     default -> 0;
         };
     }
+    private int outputData(int row, int field) {
+        var entries = machine.outputEntries();
+        if (row < 0 || row >= entries.size()) return 0;
+        var entry = entries.get(row);
+        return switch (field) {
+            case 0 -> entry.kind().ordinal() + 1;
+            case 1 -> entry.direction().get3DDataValue() + 1;
+            case 2 -> entry.config().mode;
+            case 3 -> entry.config().selection;
+            case 4 -> machine.outputLimitIndex(row);
+            case 5 -> (int)Math.min(Integer.MAX_VALUE, Math.max(0, Math.round(entry.config().average * 100)));
+            default -> 0;
+        };
+    }
     private static int encodeResource(boolean item, ResourceLocation id) {
         if (id == null) return 0;
         int registryId = item ? BuiltInRegistries.ITEM.getId(BuiltInRegistries.ITEM.get(id))
@@ -118,9 +133,35 @@ public final class MachineMenu extends AbstractContainerMenu {
     public boolean controlHigh() { return value(16)!=0; }
     public int sensorMetric() { return value(17); }
     public int sensorCondition() { return value(18); }
-    public int outputMode(int side) { return value(19+side); }
-    public int outputSelection(int side) { return value(25+side); }
-    public int outputLimitIndex(int side) { return value(31+side); }
+    private int outputValue(int row,int field) { return value(59+row*6+field); }
+    public int outputCount() { int count=0; while(count<6&&outputValue(count,0)!=0) count++; return count; }
+    public MachineKind outputKind(int row) { int id=outputValue(row,0)-1; return id<0||id>=MachineKind.values().length?null:MachineKind.values()[id]; }
+    public net.minecraft.core.Direction outputDirection(int row) { int id=outputValue(row,1)-1; return id<0||id>=6?null:net.minecraft.core.Direction.from3DDataValue(id); }
+    public int outputMode(int row) { return outputValue(row,2); }
+    public int outputSelection(int row) { return outputValue(row,3); }
+    public int outputLimitIndex(int row) { return outputValue(row,4); }
+    public double outputAverage(int row) { return outputValue(row,5)/100.0; }
+    public String outputUnit(int row) {
+        var kind=outputKind(row);
+        if(kind==null)return "/t";
+        if(kind.isEuOutput())return "EU/t";
+        if(kind.isEnergyOutput())return "FE/t";
+        return kind==MachineKind.FLUID_OUTPUT_SELECT?"mB/t":"items/t";
+    }
+    public String outputLabel(int row) {
+        var kind=outputKind(row); var direction=outputDirection(row);
+        if(kind==null||direction==null)return "";
+        String output=kind.isEuOutput()?"EU":kind.isEnergyOutput()?"FE":kind==MachineKind.FLUID_OUTPUT_SELECT?"FL":kind==MachineKind.ITEM_OUTPUT?"IT":"Out";
+        String face=switch(direction){case DOWN->"D";case UP->"U";case NORTH->"N";case SOUTH->"S";case WEST->"W";case EAST->"E";};
+        return output+" "+face;
+    }
+    public String outputFullLabel(int row) {
+        var kind=outputKind(row); var direction=outputDirection(row);
+        if(kind==null||direction==null)return "";
+        var item=ModContent.ALL_ITEMS.get(kind.id());
+        String name=item==null?kind.id():new ItemStack(item.get()).getHoverName().getString();
+        return name+" "+Component.translatable("direction.minecraft."+direction.getName()).getString();
+    }
     public double bufferFill(int index) { return value(37+index)/1000.0; }
     public Component bufferResourceName(int index) {
         int encoded=value(47+index);
@@ -164,12 +205,10 @@ public final class MachineMenu extends AbstractContainerMenu {
     private static int fill(double amount,double capacity) { return capacity<=0?0:(int)Math.round(1000*Math.max(0,Math.min(1,amount/capacity))); }
     @Override public boolean clickMenuButton(Player player,int button) {
         if (machine.kind().controller()) {
-            if (button>=0 && button<6) machine.outputMode[button]=(machine.outputMode[button]+1)%4;
-            else if (button>=6 && button<12) machine.outputSelection[button-6]=(machine.outputSelection[button-6]+1)%3;
-            else if (button>=12 && button<18) {
-                long[] limits={8000,32000,128000,Integer.MAX_VALUE};
-                int side=button-12; machine.outputLimit[side]=limits[(outputLimitIndex(side)+1)%limits.length];
-            } else if (button==18) dumpBuffers();
+            if (button>=0 && button<machine.outputEntries().size()) machine.setOutputMode(button,(machine.outputEntries().get(button).config().mode+1)%4);
+            else if (button>=6 && button<12) machine.cycleOutputSelection(button-6);
+            else if (button>=12 && button<18) machine.cycleOutputLimit(button-12);
+            else if (button==18) dumpBuffers();
             else return false;
         } else if (machine.kind()==MachineKind.CONTROL) {
             if (button==0) {

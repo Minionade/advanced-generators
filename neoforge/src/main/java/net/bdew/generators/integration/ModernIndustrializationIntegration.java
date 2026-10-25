@@ -25,12 +25,12 @@ public final class ModernIndustrializationIntegration {
         if (side == null || !module.kind().isEuOutput()) return null;
         if (module.getBlockState().getValue(BlockStateProperties.FACING) != side) return null;
         MachineBlockEntity core = module.controller();
-        if (core == null || !core.outputEnabled(side)) return null;
+        if (core == null || !module.outputEnabled(side)) return null;
 
         return new MIEnergyStorage.NoInsert() {
             private long rateEu() {
                 return Math.min(module.kind().euOutputRate(),
-                    Math.max(0, core.outputLimit[side.get3DDataValue()]) / FE_PER_EU);
+                    Math.max(0, core.outputLimit(module, side)) / FE_PER_EU);
             }
 
             @Override
@@ -40,15 +40,15 @@ public final class ModernIndustrializationIntegration {
 
             @Override
             public long extract(long maximum, boolean simulate) {
-                if (maximum <= 0 || !core.outputEnabled(side)) return 0;
+                if (maximum <= 0 || !module.outputEnabled(side)) return 0;
                 long extractedEu = Math.min(maximum, Math.min(rateEu(), core.energy / FE_PER_EU));
-                if (!simulate && extractedEu > 0) core.extractEnergy(extractedEu * FE_PER_EU, false);
+                if (!simulate && extractedEu > 0) { core.extractEnergy(extractedEu * FE_PER_EU, false); core.recordOutput(module, side, extractedEu); }
                 return extractedEu;
             }
 
             @Override public long getAmount() { return core.energy / FE_PER_EU; }
             @Override public long getCapacity() { return core.energyCapacity / FE_PER_EU; }
-            @Override public boolean canExtract() { return core.outputEnabled(side) && rateEu() > 0; }
+            @Override public boolean canExtract() { return module.outputEnabled(side) && rateEu() > 0; }
         };
     }
 }

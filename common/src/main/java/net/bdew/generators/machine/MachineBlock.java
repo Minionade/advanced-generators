@@ -87,6 +87,7 @@ public class MachineBlock extends BaseEntityBlock {
             if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.translatable("advgenerators.status." + machine.network().error()), true);
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
+        if (!level.isClientSide && target.kind().controller()) target.refreshOutputFaces();
         if (kind.controller() && !machine.hasRequiredModules()) {
             if (!level.isClientSide) {
                 player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete"), false);
