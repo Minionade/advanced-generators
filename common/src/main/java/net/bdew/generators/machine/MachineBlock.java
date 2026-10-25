@@ -55,7 +55,16 @@ public class MachineBlock extends BaseEntityBlock {
         @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(BlockStateProperties.FACING, BlockStateProperties.POWERED); }
     }
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
+        if (!kind.controller() && MultiblockNetwork.findConnections(context.getLevel(), context.getClickedPos(), kind).size() > 1) return null;
         return kind.hasFacing() ? defaultBlockState().setValue(BlockStateProperties.FACING, context.getNearestLookingDirection().getOpposite()) : defaultBlockState();
+    }
+    @Override public void setPlacedBy(Level level, BlockPos pos, BlockState state, net.minecraft.world.entity.LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level,pos,state,placer,stack);
+        if (!kind.controller() && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.tryConnect();
+    }
+    @Override protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos, boolean moving) {
+        super.neighborChanged(state,level,pos,block,fromPos,moving);
+        if (!kind.controller() && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.tryConnect();
     }
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new MachineBlockEntity(pos, state); }
@@ -69,12 +78,25 @@ public class MachineBlock extends BaseEntityBlock {
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (player.isCrouching()) return InteractionResult.PASS;
         if (!(level.getBlockEntity(pos) instanceof MachineBlockEntity machine)) return InteractionResult.PASS;
         // Controllers own their main GUI; control/sensor modules have their
         // own per-module configuration. All other modules open the controller.
         var target = kind.controller() || kind == MachineKind.CONTROL || kind == MachineKind.SENSOR ? machine : machine.controller();
         if (target == null) {
             if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.translatable("advgenerators.status." + machine.network().error()), true);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (kind.controller() && !machine.hasRequiredModules()) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete"), false);
+                machine.missingRequiredModules().forEach((module,count) -> {
+                    String moduleName = switch (module) { case "turbine" -> "Turbine"; case "mixingChamber" -> "MixingChamber"; default -> "HeatExchanger"; };
+                    player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete.entry",
+                        net.minecraft.network.chat.Component.literal(Integer.toString(count)).withStyle(net.minecraft.ChatFormatting.RED),
+                        net.minecraft.network.chat.Component.translatable("advgenerators.module."+moduleName+".name").withStyle(net.minecraft.ChatFormatting.RED)),false);
+                });
+            }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
         if (player instanceof ServerPlayer serverPlayer) MenuRegistry.openExtendedMenu(serverPlayer, target, buf -> buf.writeBlockPos(target.getBlockPos()));
@@ -86,7 +108,10 @@ public class MachineBlock extends BaseEntityBlock {
     }
     @Override protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState next, boolean moving) {
         if (state.getBlock() != next.getBlock()) {
-            if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.dropItems();
+            if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
+                if (kind.controller()) machine.detachModules();
+                machine.dropItems();
+            }
             MultiblockNetwork.invalidate(level);
         }
         super.onRemove(state, level, pos, next, moving);

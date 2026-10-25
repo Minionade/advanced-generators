@@ -51,6 +51,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     private final RollingAverage heatDeltaAverage = new RollingAverage();
     private MultiblockNetwork cachedNetwork;
     private long networkRevision = -1, networkTick = -1;
+    private BlockPos connectedCore;
     public MachineBlockEntity(BlockPos pos, BlockState state) {
         super(ModContent.MACHINE_ENTITY.get(), pos, state);
         Arrays.fill(outputLimit, Integer.MAX_VALUE);
@@ -59,13 +60,70 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public MachineKind kind() { return ((MachineBlock)getBlockState().getBlock()).kind; }
     public void cacheNetwork(MultiblockNetwork network) { cachedNetwork = network; networkRevision = MultiblockNetwork.revision(level); networkTick = level.getGameTime(); }
     public MultiblockNetwork network() {
+        if (level == null) return new MultiblockNetwork(null, List.of(), 1);
         if (cachedNetwork == null || networkRevision != MultiblockNetwork.revision(level) || level.getGameTime() - networkTick >= 20) return MultiblockNetwork.discover(this);
         return cachedNetwork;
     }
+    public BlockPos connectedCore() { return connectedCore; }
+    public boolean connectTo(MachineBlockEntity core) {
+        if (kind().controller() || core == null || !core.kind().controller() || connectedCore != null || !core.canAcceptModule(kind())) return false;
+        connectedCore = core.getBlockPos().immutable();
+        setChanged();
+        if (level != null) {
+            MultiblockNetwork.invalidate(level);
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        }
+        return true;
+    }
+    public boolean tryConnect() {
+        if (level == null || kind().controller()) return false;
+        if (connectedCore != null) {
+            if (controller() != null) return false;
+            connectedCore = null;
+        }
+        var candidates = MultiblockNetwork.findConnections(level, worldPosition, kind());
+        if (candidates.size() != 1) return false;
+        return level.getBlockEntity(candidates.iterator().next()) instanceof MachineBlockEntity core && connectTo(core);
+    }
+    public boolean canAcceptModule(MachineKind moduleKind) {
+        if (!kind().controller() || moduleKind.controller() || level == null) return false;
+        int max = GeneratorConfig.INSTANCE.limit(kind(), moduleKind.category);
+        if (max <= 0) return false;
+        return members().stream().filter(m -> m.kind().category.equals(moduleKind.category)).count() < max;
+    }
+    public boolean hasRequiredModules() {
+        return missingRequiredModules().isEmpty();
+    }
+    public Map<String,Integer> missingRequiredModules() {
+        var required = switch (kind()) {
+            case FUEL_TURBINE_CONTROLLER, STEAM_TURBINE_CONTROLLER -> Map.of("turbine",1);
+            case SYNGAS_CONTROLLER -> Map.of("mixingChamber",1);
+            case EXCHANGER_CONTROLLER -> Map.of("heatExchanger",1);
+            default -> Map.<String,Integer>of();
+        };
+        var counts = new HashMap<String,Integer>();
+        for (var module : members()) counts.merge(module.kind().category,1,Integer::sum);
+        var missing = new LinkedHashMap<String,Integer>();
+        required.forEach((category,count) -> { if (counts.getOrDefault(category,0)<count) missing.put(category,count-counts.getOrDefault(category,0)); });
+        return missing;
+    }
+    public void detachModules() {
+        if (level == null || !kind().controller()) return;
+        for (var module : members()) {
+            module.connectedCore = null;
+            module.setChanged();
+            level.sendBlockUpdated(module.worldPosition, module.getBlockState(), module.getBlockState(), 3);
+            level.updateNeighborsAt(module.worldPosition, module.getBlockState().getBlock());
+        }
+        MultiblockNetwork.invalidate(level);
+    }
     public MachineBlockEntity controller() {
         if (level == null) return null;
+        if (!kind().controller() && connectedCore == null) return null;
         var network = network();
         if (network.error() != 0 || network.controller() == null || !level.hasChunkAt(network.controller())) return null;
+        if (!kind().controller() && !network.members().contains(worldPosition)) return null;
         return level.getBlockEntity(network.controller()) instanceof MachineBlockEntity m ? m : null;
     }
     public List<MachineBlockEntity> members() {
@@ -431,6 +489,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     public void restore(CompoundTag tag) { loadAdditional(tag,level.registryAccess()); }
     @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag,registries);
+        if (connectedCore != null) tag.putLong("connectedCore", connectedCore.asLong());
         tag.putLong("energy",energy); tag.putDouble("heat",heat); tag.putDouble("carbon",carbon); tag.putDouble("burnTime",burnTime); tag.putDouble("rpm",rpm); tag.putDouble("fraction",energyFraction);
         for(int i=0;i<4;i++) tag.put("buffer"+i,buffers[i].save(registries));
         tag.put("inventory",inventory.createTag(registries));
@@ -443,6 +502,7 @@ public final class MachineBlockEntity extends BlockEntity implements MenuProvide
     private static double finite(CompoundTag tag,String key) { double v = tag.getDouble(key); return Double.isFinite(v) ? Math.max(0,v) : 0; }
     @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag,registries);
+        connectedCore = tag.contains("connectedCore", Tag.TAG_LONG) ? BlockPos.of(tag.getLong("connectedCore")) : null;
         energy = Math.max(0,tag.getLong("energy")); heat=finite(tag,"heat"); carbon=finite(tag,"carbon"); burnTime=finite(tag,"burnTime"); rpm=finite(tag,"rpm"); energyFraction=Math.min(.999999,finite(tag,"fraction"));
         for(int i=0;i<4;i++) { buffers[i].capacity = Double.MAX_VALUE; buffers[i].load(tag.getCompound("buffer"+i),registries); }
         inventory.clearContent(); inventory.fromTag(tag.getList("inventory",Tag.TAG_COMPOUND),registries);
