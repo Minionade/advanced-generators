@@ -25,7 +25,6 @@ subprojects {
             content { includeGroup 'teamreborn' }
         }
         maven { url = 'https://maven.blamejared.com/' }
-        maven { url = 'https://api.modrinth.com/maven' }
         maven { url = 'https://modmaven.dev/' }
     }
     dependencies {
