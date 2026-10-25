@@ -1,5 +1,4 @@
 {
-  "loader": "advgenerators:multiblock_model",
   "parent": "advgenerators:block/rotated",
   "textures": {
     "front": "advgenerators:block/euoutput/front_hv",
