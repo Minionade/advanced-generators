@@ -78,13 +78,13 @@ public final class BuildCraftMachineBlockEntity extends MachineBlockEntity imple
             @Override public MjAmount stored() {
                 var core = controller();
                 return core == null ? MjAmount.ZERO : MjAmount.ofMicro(
-                    BuildCraftApi.service(BuildCraftServices.ENERGY).conversion().feToMicroMjClamped(Math.max(0, core.energy)));
+                    BuildCraftApi.service(BuildCraftServices.ENERGY).conversion().feToMicroMj(Math.max(0, core.energy)));
             }
 
             @Override public MjAmount capacity() {
                 var core = controller();
                 return core == null ? MjAmount.ZERO : MjAmount.ofMicro(
-                    BuildCraftApi.service(BuildCraftServices.ENERGY).conversion().feToMicroMjClamped(Math.max(0, core.energyCapacity)));
+                    BuildCraftApi.service(BuildCraftServices.ENERGY).conversion().feToMicroMj(Math.max(0, core.energyCapacity)));
             }
 
             @Override public boolean canInsert() { return false; }

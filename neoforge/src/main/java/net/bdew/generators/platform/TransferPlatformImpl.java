@@ -74,7 +74,7 @@ public final class TransferPlatformImpl {
         IFluidHandler target=fluids(core,side);return target!=null&&FluidUtil.interactWithFluidHandler(player,hand,target);
     }
     public static IFluidHandler fluids(MachineBlockEntity machine,Direction side) {
-        if (machine.kind().isMjOutput()) return BuildCraftPlatform.canOutputOn(machine, side);
+        if (machine.kind().isMjOutput()) return null;
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
             return new NativeFluidHandler(core,core.outputSlots(core.outputSelection(machine,side)),false,true);
@@ -115,6 +115,7 @@ public final class TransferPlatformImpl {
             IEnergyStorage target=level.getCapability(Capabilities.EnergyStorage.BLOCK,targetPos,side.getOpposite());
             return target!=null&&target.canReceive();
         }
+        if (machine.kind().isMjOutput()) return BuildCraftPlatform.canOutputOn(machine, side);
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             IFluidHandler target=level.getCapability(Capabilities.FluidHandler.BLOCK,targetPos,side.getOpposite());
             return target!=null;
