@@ -75,7 +75,8 @@ public final class TransferPlatformImpl {
         }
     }
     public static boolean interact(MachineBlockEntity module,Player player,InteractionHand hand,Direction side) {
-        IFluidHandler target=fluids(module,side);return target!=null&&FluidUtil.interactWithFluidHandler(player,hand,target);
+        var core=module.kind().controller()?module:module.controller();if(core==null)return false;
+        IFluidHandler target=fluids(core,side);return target!=null&&FluidUtil.interactWithFluidHandler(player,hand,target);
     }
     public static IFluidHandler fluids(MachineBlockEntity machine,Direction side) {
         if (machine.kind().isMjOutput()) return null;
