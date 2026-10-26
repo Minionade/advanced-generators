@@ -49,7 +49,10 @@ public final class TransferPlatformImpl {
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK,type,TransferPlatformImpl::energy);
     }
     public static void push(MachineBlockEntity module) {
-        if (module.kind().isMjOutput()) return; // BCCE pulls from the native MJ port.
+        if (module.kind().isMjOutput()) {
+            BuildCraftPlatform.push(module);
+            return;
+        }
         var level=module.getLevel();
         var core=module.controller();if(core==null)return;
         for(Direction side:Direction.values()) {
