@@ -117,13 +117,11 @@ public final class FabricTransfers {
         if(heldFluid!=null) {
             var target=fluids(core,side);
             if(target!=null) {
-                Storage<FluidVariant> source=target.supportsExtraction()?target:heldFluid;
-                Storage<FluidVariant> destination=target.supportsExtraction()?heldFluid:target;
                 if(player.getAbilities().instabuild) {
                     // Match NeoForge's FluidUtil behavior: creative interactions
                     // exchange the bucket contents without consuming the source.
-                    if(copyFluid(source,destination)>0)return true;
-                } else if(StorageUtil.move(source,destination,v->true,81000,null)>0)return true;
+                    if(copyFluid(heldFluid,target)>0)return true;
+                } else if(StorageUtil.move(heldFluid,target,v->true,81000,null)>0)return true;
             }
         }
         Storage<ItemVariant> heldItems=ItemStorage.ITEM.find(player.getItemInHand(hand),context);
