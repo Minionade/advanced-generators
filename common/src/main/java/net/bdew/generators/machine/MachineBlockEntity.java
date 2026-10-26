@@ -229,7 +229,13 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             default -> c.exchangerCapacity;
         };
         for (var buffer : buffers) buffer.capacity = capacity;
-        // Do not erase stored resources when a module or chunk disappears. Over-capacity storage refuses insertions.
+
+        // The network may have lost capacitors or its energy config may have changed.
+        // Recalculate stored energy against the new capacity immediately.
+        if (energy >= energyCapacity) {
+            energy = energyCapacity;
+            energyFraction = 0;
+        }
     }
     private List<RecipeHolder<MachineRecipe>> recipes(String type) { return level.getRecipeManager().getAllRecipesFor(ModContent.RECIPE_TYPES.get(type).get()); }
     public double carbonValue(ItemStack stack) {
@@ -240,8 +246,17 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(buffers[0].fluid())).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
     }
     private void addEnergy(double quantity) {
-        double accepted = Math.min(quantity, Math.max(0, energyCapacity - energy));
-        energyFraction += accepted; long whole = (long)Math.floor(energyFraction); energy += whole; energyFraction -= whole; generationRate = accepted;
+        double room = Math.max(0, energyCapacity - energy - energyFraction);
+        double accepted = Math.min(Math.max(0, quantity), room);
+        energyFraction += accepted;
+        long whole = (long)Math.floor(energyFraction);
+        energy += whole;
+        energyFraction -= whole;
+        if (energy >= energyCapacity) {
+            energy = energyCapacity;
+            energyFraction = 0;
+        }
+        generationRate = accepted;
     }
     private void tickFuel() {
         if (maxOutput <= 0 || !control(1, true)) return;
