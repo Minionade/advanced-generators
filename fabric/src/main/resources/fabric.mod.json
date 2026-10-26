@@ -2,7 +2,6 @@
   "schemaVersion": 1, "id": "advgenerators", "version": "${version}",
   "name": "Advanced Generators", "description": "Free-form modular power generators. Java multiloader port.",
   "authors": ["bdew", "Minionade"], "license": "MIT", "environment": "*",
-  "mixins": ["advgenerators.mixins.json"],
   "entrypoints": {"main": ["net.bdew.generators.fabric.GeneratorsFabric"], "client": ["net.bdew.generators.fabric.GeneratorsFabricClient"]},
   "depends": {"fabricloader": ">=0.16.14", "minecraft": "~1.21.1", "java": ">=21", "fabric-api": "*", "architectury": ">=13.0.8"},
   "suggests": {"jei": "*", "techreborn": "*", "team_reborn_energy": ">=4.1.0"}

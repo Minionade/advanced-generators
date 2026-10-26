@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/bucket",
-    "fluidMask": "minecraft:item/water_bucket",
-    "particle": "minecraft:item/bucket"
-  }
-}
