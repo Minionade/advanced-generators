@@ -168,6 +168,8 @@ public final class MachineMenu extends AbstractContainerMenu {
         int encoded=value(47+index);
         if(encoded==0)return Component.empty();
         boolean fluid=(encoded&(1<<30))!=0;
+        if (machine.kind() == MachineKind.STEAM_TURBINE_CONTROLLER && index == 0)
+            return Component.translatable("block.advgenerators.steam");
         int registryId=(encoded&~(1<<30))-1;
         if(fluid) {
             var id=BuiltInRegistries.FLUID.getKey(BuiltInRegistries.FLUID.byId(registryId));
