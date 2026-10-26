@@ -43,13 +43,9 @@ public final class BuildCraftMachineBlockEntity extends MachineBlockEntity imple
         return new BuildCraftMachineBlockEntity(pos, state);
     }
 
-    @Override
-    public <T> T getCapability(BlockCapability<T, Direction> capability, Direction side) {
-        if (kind().isMjOutput() && side != null) {
-            T value = mjCapabilities.get(side).getCapability(capability, side);
-            if (value != null) return value;
-        }
-        return super.getCapability(capability, side);
+    public <T> T buildCraftCapability(BlockCapability<T, Direction> capability, Direction side) {
+        if (!kind().isMjOutput() || side == null) return null;
+        return mjCapabilities.get(side).getCapability(capability, side);
     }
 
     public static boolean canOutputOn(MachineBlockEntity machine, Direction side) {
