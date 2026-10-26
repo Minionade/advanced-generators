@@ -45,8 +45,8 @@ public final class MachineMenu extends AbstractContainerMenu {
     private int serverValue(int i) {
         if (i >= 59) return outputData((i - 59) / 6, (i - 59) % 6);
         return switch(i) {
-                    case 0 -> (int)(machine.energy & 0x7fffffff);
-                    case 1 -> (int)(machine.energy >>> 31);
+                    case 0 -> (int)(Math.min(machine.energy,machine.energyCapacity) & 0x7fffffff);
+                    case 1 -> (int)(Math.min(machine.energy,machine.energyCapacity) >>> 31);
                     case 2 -> (int)Math.min(Integer.MAX_VALUE,machine.energyCapacity);
                     case 3 -> (int)Math.min(Integer.MAX_VALUE,(machine.kind()==MachineKind.EXCHANGER_CONTROLLER?machine.exchangers*net.bdew.generators.config.GeneratorConfig.INSTANCE.exchangerTransfer:machine.maxOutput)*100);
                     case 4 -> (int)Math.min(Integer.MAX_VALUE,machine.heat*100);
