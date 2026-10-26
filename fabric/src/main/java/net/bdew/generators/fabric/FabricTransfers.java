@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.CombinedStorage;
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionHand;
@@ -114,11 +115,34 @@ public final class FabricTransfers {
         var context=ContainerItemContext.ofPlayerHand(player,hand);
         Storage<FluidVariant> heldFluid=context.find(FluidStorage.ITEM);
         if(heldFluid!=null) {
-            var target=fluids(core,side);
-            if(target!=null&&StorageUtil.move(heldFluid,target,v->true,81000,null)>0)return true;
+            // Use the clicked module here: output modules expose an extract-only
+            // storage while controllers/input modules expose insert-only storage.
+            var target=fluids(module,side);
+            if(target!=null) {
+                Storage<FluidVariant> source=target.supportsExtraction()?target:heldFluid;
+                Storage<FluidVariant> destination=target.supportsExtraction()?heldFluid:target;
+                if(player.getAbilities().instabuild) {
+                    // Match NeoForge's FluidUtil behavior: creative interactions
+                    // exchange the bucket contents without consuming the source.
+                    if(copyFluid(source,destination)>0)return true;
+                } else if(StorageUtil.move(source,destination,v->true,81000,null)>0)return true;
+            }
         }
         Storage<ItemVariant> heldItems=ItemStorage.ITEM.find(player.getItemInHand(hand),context);
         var target=items(core,side);
         return heldItems!=null&&target!=null&&StorageUtil.move(heldItems,target,v->true,64,null)>0;
+    }
+
+    private static long copyFluid(Storage<FluidVariant> source,Storage<FluidVariant> destination) {
+        try(Transaction transaction=Transaction.openOuter()) {
+            long moved=0;
+            for(var view:source) {
+                if(view.isResourceBlank()||view.getAmount()<=moved)continue;
+                moved+=destination.insert(view.getResource(),view.getAmount()-moved,transaction);
+                if(moved>=81000)break;
+            }
+            if(moved>0)transaction.commit();
+            return moved;
+        }
     }
 }
