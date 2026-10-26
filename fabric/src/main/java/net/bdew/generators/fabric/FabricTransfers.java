@@ -115,9 +115,7 @@ public final class FabricTransfers {
         var context=ContainerItemContext.ofPlayerHand(player,hand);
         Storage<FluidVariant> heldFluid=context.find(FluidStorage.ITEM);
         if(heldFluid!=null) {
-            // Use the clicked module here: output modules expose an extract-only
-            // storage while controllers/input modules expose insert-only storage.
-            var target=fluids(module,side);
+            var target=fluids(core,side);
             if(target!=null) {
                 Storage<FluidVariant> source=target.supportsExtraction()?target:heldFluid;
                 Storage<FluidVariant> destination=target.supportsExtraction()?heldFluid:target;
