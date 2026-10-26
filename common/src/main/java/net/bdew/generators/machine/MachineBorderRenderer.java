@@ -157,11 +157,13 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
 
     // Match BdLib's cutout quads: vanilla directional shading, without block AO.
     private static float faceShade(Direction face) {
+        // Keep the connected frame visibly gray. The previous 0.5–0.8 multipliers
+        // turned the gray texture nearly black on bottom and side faces.
         return switch (face) {
-            case DOWN -> 0.5f;
+            case DOWN -> 0.9f;
             case UP -> 1.0f;
-            case NORTH, SOUTH -> 0.8f;
-            case WEST, EAST -> 0.6f;
+            case NORTH, SOUTH -> 0.95f;
+            case WEST, EAST -> 0.92f;
         };
     }
 
