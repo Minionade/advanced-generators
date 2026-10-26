@@ -113,17 +113,18 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         };
         float[][] uvs = {{u1,v1},{u2,v1},{u2,v2},{u1,v2}};
         var pose = stack.last();
+        int shade = (int)(faceShade(face) * 255);
         for (int i = 0; i < 4; i++) {
             float[] p = positions[i];
             float x = (p[0] - .5f) * EXPANSION + .5f;
             float y = (p[1] - .5f) * EXPANSION + .5f;
             float z = (p[2] - .5f) * EXPANSION + .5f;
             out.addVertex(pose.pose(), x, y, z)
-                .setColor(255, 255, 255, 255)
+                .setColor(shade, shade, shade, 255)
                 .setUv(uvs[i][0], uvs[i][1])
                 .setOverlay(overlay)
                 .setLight(light)
-                .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
+                .setNormal(pose, 0, 1, 0);
         }
     }
 
@@ -139,18 +140,29 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         };
         float[][] positions = {point(face,0,0), point(face,1,0), point(face,1,1), point(face,0,1)};
         var pose = stack.last();
+        float shade = faceShade(face);
         for (int i = 0; i < 4; i++) {
             float[] p = positions[i];
             float x = (p[0] - .5f) * EXPANSION + .5f;
             float y = (p[1] - .5f) * EXPANSION + .5f;
             float z = (p[2] - .5f) * EXPANSION + .5f;
             out.addVertex(pose.pose(), x, y, z)
-                .setColor(color[0], color[1], color[2], 255)
+                .setColor((int)(color[0] * shade), (int)(color[1] * shade), (int)(color[2] * shade), 255)
                 .setUv(uv[i][0], uv[i][1])
                 .setOverlay(overlay)
                 .setLight(light)
-                .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
+                .setNormal(pose, 0, 1, 0);
         }
+    }
+
+    // Match BdLib's cutout quads: vanilla directional shading, without block AO.
+    private static float faceShade(Direction face) {
+        return switch (face) {
+            case DOWN -> 0.5f;
+            case UP -> 1.0f;
+            case NORTH, SOUTH -> 0.8f;
+            case WEST, EAST -> 0.6f;
+        };
     }
 
     private static float[] point(Direction face, float u, float v) {
