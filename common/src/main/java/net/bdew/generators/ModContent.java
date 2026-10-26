@@ -9,6 +9,7 @@ import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.bdew.generators.machine.*;
 import net.bdew.generators.menu.MachineMenu;
+import net.bdew.generators.platform.TransferPlatform;
 import net.bdew.generators.recipe.MachineRecipe;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
