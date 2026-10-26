@@ -343,9 +343,12 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return disabled ? false : fallback;
     }
     public boolean outputEnabled(Direction side) {
-        if (!kind().output() || level==null) return false;
-        var config=outputConfig(this, side); if(config==null)return false;
-        int mode = config.mode; boolean signal = level.hasNeighborSignal(worldPosition);
+        if (!kind().output() || level == null || side == null) return false;
+        var core = kind().controller() ? this : controller();
+        if (core == null) return false;
+        var config = core.outputConfigs.get(new OutputFace(worldPosition, side));
+        int mode = config == null ? core.outputMode[side.get3DDataValue()] : config.mode;
+        boolean signal = level.hasNeighborSignal(worldPosition);
         return mode == 0 || mode == 1 && signal || mode == 2 && !signal;
     }
     public void refreshOutputFaces() {
@@ -361,8 +364,11 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 BlockPos target = module.getBlockPos().relative(direction);
                 if (!level.hasChunkAt(target)) continue;
                 OutputFace face = new OutputFace(module.getBlockPos(), direction);
+                boolean apiPort = module.kind().isEuOutput() || module.kind().isMjOutput();
+                boolean facingMatches = !module.kind().hasFacing()
+                    || module.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) == direction;
                 boolean available = !memberPositions.contains(target) && !target.equals(worldPosition)
-                    && TransferPlatform.canOutputOn(module, direction);
+                    && facingMatches && (apiPort || TransferPlatform.canOutputOn(module, direction));
                 if (available) {
                     outputConfigs.computeIfAbsent(face, key -> {
                         int side = direction.get3DDataValue();
@@ -398,10 +404,18 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return -1;
     }
     public long outputLimit(MachineBlockEntity module, Direction direction) {
-        var config = outputConfig(module, direction); return config == null ? 0 : config.limit;
+        if (direction == null) return 0;
+        var core = module.kind().controller() ? module : module.controller();
+        if (core == null) return 0;
+        var config = core.outputConfigs.get(new OutputFace(module.getBlockPos(), direction));
+        return config == null ? core.outputLimit[direction.get3DDataValue()] : config.limit;
     }
     public int outputSelection(MachineBlockEntity module, Direction direction) {
-        var config = outputConfig(module, direction); return config == null ? 0 : config.selection;
+        if (direction == null) return 0;
+        var core = module.kind().controller() ? module : module.controller();
+        if (core == null) return 0;
+        var config = core.outputConfigs.get(new OutputFace(module.getBlockPos(), direction));
+        return config == null ? core.outputSelection[direction.get3DDataValue()] : config.selection;
     }
     public void setOutputMode(int row, int value) { outputEntry(row).ifPresent(entry -> entry.config().mode = value); }
     public void cycleOutputSelection(int row) { outputEntry(row).ifPresent(entry -> entry.config().selection = (entry.config().selection + 1) % 3); }
