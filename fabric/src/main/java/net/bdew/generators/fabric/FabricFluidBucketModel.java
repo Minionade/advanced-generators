@@ -46,10 +46,18 @@ public final class FabricFluidBucketModel extends BlockModel implements UnbakedM
     public static void register() {
         ModelLoadingPlugin.register(context -> context.modifyModelOnLoad().register((original, modelContext) -> {
             ResourceLocation id = modelContext.resourceId();
-            if (!(original instanceof BlockModel blockModel)) return original;
-            Fluid fluid = id.equals(Generators.id("item/steam_bucket")) ? ModContent.GASES.get("steam").source.get()
-                : id.equals(Generators.id("item/syngas_bucket")) ? ModContent.GASES.get("syngas").source.get()
-                : id.equals(BASE_MODEL_ID) ? Fluids.EMPTY : null;
+            if (id == null && modelContext.topLevelId() != null) {
+                String topLevel = modelContext.topLevelId().toString();
+                int variant = topLevel.indexOf('#');
+                id = ResourceLocation.tryParse(variant < 0 ? topLevel : topLevel.substring(0, variant));
+            }
+            if (id == null || !(original instanceof BlockModel blockModel)) return original;
+            String path = id.getPath();
+            Fluid fluid = path.equals("steam_bucket") || path.equals("item/steam_bucket")
+                ? ModContent.GASES.get("steam").source.get()
+                : path.equals("syngas_bucket") || path.equals("item/syngas_bucket")
+                    ? ModContent.GASES.get("syngas").source.get()
+                    : id.equals(BASE_MODEL_ID) ? Fluids.EMPTY : null;
             if (fluid == null) return original;
             FabricFluidBucketModel model = new FabricFluidBucketModel(blockModel, fluid);
             if (id.equals(BASE_MODEL_ID)) MODELS.put(id, model);
