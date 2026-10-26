@@ -14,7 +14,7 @@ final class FabricEnergyTransfers implements FabricTransfers.EnergyIntegration {
     private static final long FE_PER_EU=4;
 
     @Override public void register(BlockEntityType<MachineBlockEntity> type) {
-        EnergyStorage.SIDED.registerForBlockEntity(this::storage,type);
+        EnergyStorage.SIDED.registerForBlockEntity((machine,side)->(EnergyStorage)storage(machine,side),type);
     }
 
     @Override public Object storage(MachineBlockEntity machine,Direction side) {
