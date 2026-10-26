@@ -174,6 +174,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 machine.sampleRates();
                 machine.setChanged();
             }
+            machine.clampEnergyToCapacity();
         } else if (machine.kind().output() && network.error() == 0) TransferPlatform.push(machine);
         if (machine.kind() == MachineKind.SENSOR || machine.kind() == MachineKind.CONTROL) {
             boolean powered = machine.kind() == MachineKind.CONTROL ? level.hasNeighborSignal(pos) : machine.sensor();
@@ -232,10 +233,12 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
 
         // The network may have lost capacitors or its energy config may have changed.
         // Recalculate stored energy against the new capacity immediately.
-        if (energy >= energyCapacity) {
-            energy = energyCapacity;
-            energyFraction = 0;
-        }
+        clampEnergyToCapacity();
+    }
+    private void clampEnergyToCapacity() {
+        if (energyCapacity < 0) energyCapacity = 0;
+        if (energy > energyCapacity) energy = energyCapacity;
+        if (energy >= energyCapacity) energyFraction = 0;
     }
     private List<RecipeHolder<MachineRecipe>> recipes(String type) { return level.getRecipeManager().getAllRecipesFor(ModContent.RECIPE_TYPES.get(type).get()); }
     public double carbonValue(ItemStack stack) {
