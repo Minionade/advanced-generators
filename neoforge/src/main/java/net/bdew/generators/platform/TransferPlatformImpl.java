@@ -47,6 +47,8 @@ public final class TransferPlatformImpl {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK,type,TransferPlatformImpl::fluids);
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK,type,TransferPlatformImpl::items);
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK,type,TransferPlatformImpl::energy);
+        if (ModList.get().isLoaded("buildcraftlib"))
+            BuildCraftPlatform.registerCapabilities(event, type);
     }
     public static void push(MachineBlockEntity module) {
         if (module.kind().isMjOutput()) {
