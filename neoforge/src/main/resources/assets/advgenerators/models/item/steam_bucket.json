@@ -1,10 +1,6 @@
 {
-  "parent": "neoforge:item/default",
   "loader": "neoforge:fluid_container",
-  "textures": {
-    "base": "minecraft:item/bucket",
-    "fluid": "neoforge:item/mask/bucket_fluid"
-  },
+  "parent": "neoforge:item/bucket",
   "fluid": "advgenerators:steam",
   "flip_gas": true
 }
