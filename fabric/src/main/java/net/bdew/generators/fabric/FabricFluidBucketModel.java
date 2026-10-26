@@ -13,11 +13,13 @@ public final class FabricFluidBucketModel {
     public static void register() {
         ModelLoadingPlugin.register(context -> {
             context.addModels(FLUID_FILL_MODEL);
-            context.resolveModel().register(modelContext -> {
-                ResourceLocation id = modelContext.id();
+            context.modifyModelOnLoad().register((original, modelContext) -> {
+                ResourceLocation id = modelContext.resourceId();
+                if (id == null && modelContext.topLevelId() != null) id = modelContext.topLevelId().id();
+                if (id == null) return original;
                 if (isBucketModel(id, "steam_bucket")) return new FabricDynamicBucketModel("steam");
                 if (isBucketModel(id, "syngas_bucket")) return new FabricDynamicBucketModel("syngas");
-                return null;
+                return original;
             });
         });
     }
