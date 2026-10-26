@@ -17,4 +17,10 @@ final class BuildCraftPlatform {
     static boolean canOutputOn(MachineBlockEntity machine, Direction side) {
         return BuildCraftMachineBlockEntity.canOutputOn(machine, side);
     }
+
+    static void push(MachineBlockEntity machine) {
+        if (machine instanceof BuildCraftMachineBlockEntity buildCraftMachine) {
+            buildCraftMachine.pushMjOutput();
+        }
+    }
 }
