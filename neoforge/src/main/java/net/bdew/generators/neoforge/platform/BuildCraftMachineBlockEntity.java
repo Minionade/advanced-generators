@@ -43,12 +43,10 @@ public final class BuildCraftMachineBlockEntity extends MachineBlockEntity imple
 
     @Override
     public Optional<MjPortDescriptor> mjPortDescriptor(Direction side) {
-        if (!kind().isMjOutput() || side == null || !outputEnabled(side)) return Optional.empty();
+        if (!kind().isMjOutput() || side == null) return Optional.empty();
         var core = controller();
-        if (core == null) return Optional.empty();
-
         EnergyConversion conversion = BuildCraftApi.service(BuildCraftServices.ENERGY).conversion();
-        long rateFe = Math.max(0, core.outputLimit(this, side));
+        long rateFe = core == null ? 0 : Math.max(0, core.outputLimit(this, side));
         long rateMicroMj = conversion.feToMicroMj(rateFe);
         return Optional.of(new MjPortDescriptor(
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("buildcraft", "mj"),
@@ -64,7 +62,7 @@ public final class BuildCraftMachineBlockEntity extends MachineBlockEntity imple
 
     @Override
     public Optional<MjPort> mjPort(Direction side) {
-        if (!kind().isMjOutput() || side == null || !outputEnabled(side)) return Optional.empty();
+        if (!kind().isMjOutput() || side == null) return Optional.empty();
         return Optional.of(new MjPort() {
             @Override public MjTransferResult insert(MjAmount offered, OperationMode mode) {
                 return MjTransferResult.none(offered);
