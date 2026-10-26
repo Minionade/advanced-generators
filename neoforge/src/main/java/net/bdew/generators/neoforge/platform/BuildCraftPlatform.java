@@ -1,7 +1,7 @@
 package net.bdew.generators.neoforge.platform;
 
 import net.bdew.generators.machine.MachineBlockEntity;
-import net.bdew.generators.platform.BuildCraftMachineBlockEntity;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;

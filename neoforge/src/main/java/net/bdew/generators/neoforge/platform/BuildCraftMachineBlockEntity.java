@@ -1,4 +1,4 @@
-package net.bdew.generators.platform;
+package net.bdew.generators.neoforge.platform;
 
 import buildcraft.api.v2.BuildCraftApi;
 import buildcraft.api.v2.BuildCraftServices;
