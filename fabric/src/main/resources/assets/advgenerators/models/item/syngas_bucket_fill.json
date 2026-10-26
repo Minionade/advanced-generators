@@ -1,0 +1,7 @@
+{
+  "parent": "advgenerators:item/bucket_fluid_fill_template",
+  "textures": {
+    "fluid": "advgenerators:block/syngas/still",
+    "particle": "advgenerators:block/syngas/still"
+  }
+}

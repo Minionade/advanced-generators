@@ -5,27 +5,33 @@ import net.minecraft.resources.ResourceLocation;
 
 /** Registers the shared dynamic model used for the mod's fluid buckets. */
 public final class FabricFluidBucketModel {
-    private static final ResourceLocation FLUID_FILL_MODEL = ResourceLocation.fromNamespaceAndPath(
-        "advgenerators", "item/bucket_fluid_fill");
-
     private FabricFluidBucketModel() { }
 
     public static void register() {
         ModelLoadingPlugin.register(context -> {
-            context.addModels(FLUID_FILL_MODEL);
+            context.addModels(
+                ResourceLocation.fromNamespaceAndPath("advgenerators", "item/steam_bucket_fill"),
+                ResourceLocation.fromNamespaceAndPath("advgenerators", "item/syngas_bucket_fill"));
+            context.resolveModel().register(modelContext -> {
+                String fluid = bucketFluid(modelContext.id());
+                return fluid == null ? null : new FabricDynamicBucketModel(fluid);
+            });
             context.modifyModelOnLoad().register((original, modelContext) -> {
                 ResourceLocation id = modelContext.resourceId();
                 if (id == null && modelContext.topLevelId() != null) id = modelContext.topLevelId().id();
                 if (id == null) return original;
-                if (isBucketModel(id, "steam_bucket")) return new FabricDynamicBucketModel("steam");
-                if (isBucketModel(id, "syngas_bucket")) return new FabricDynamicBucketModel("syngas");
+                String fluid = bucketFluid(id);
+                if (fluid != null) return new FabricDynamicBucketModel(fluid);
                 return original;
             });
         });
     }
 
-    private static boolean isBucketModel(ResourceLocation id, String itemPath) {
-        return id.getNamespace().equals("advgenerators")
-            && (id.getPath().equals(itemPath) || id.getPath().equals("item/" + itemPath));
+    private static String bucketFluid(ResourceLocation id) {
+        if (!id.getNamespace().equals("advgenerators")) return null;
+        String path = id.getPath();
+        if (path.equals("steam_bucket") || path.equals("item/steam_bucket")) return "steam";
+        if (path.equals("syngas_bucket") || path.equals("item/syngas_bucket")) return "syngas";
+        return null;
     }
 }

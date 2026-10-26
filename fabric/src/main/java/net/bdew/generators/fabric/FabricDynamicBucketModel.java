@@ -12,24 +12,25 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
-/** Unbaked definition for a bucket whose fluid sprite is chosen while rendering. */
+/** Bakes the vanilla bucket frame together with the matching animated fluid texture. */
 public final class FabricDynamicBucketModel implements UnbakedModel {
     private static final ResourceLocation EMPTY_BUCKET_MODEL = ResourceLocation.withDefaultNamespace("item/bucket");
-    private static final ResourceLocation FILL_MODEL = ResourceLocation.fromNamespaceAndPath(
-        "advgenerators", "item/bucket_fluid_fill");
-
     private final String fluidPath;
 
     public FabricDynamicBucketModel(String fluidPath) { this.fluidPath = fluidPath; }
 
     @Override public Collection<ResourceLocation> getDependencies() {
-        return List.of(EMPTY_BUCKET_MODEL, FILL_MODEL);
+        return List.of(EMPTY_BUCKET_MODEL, fillModelId());
     }
 
     @Override public void resolveParents(Function<ResourceLocation, UnbakedModel> modelLoader) { }
 
     @Override public BakedModel bake(ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter, ModelState state) {
-        return new FabricDynamicBucketBakedModel(fluidPath,
-            baker.bake(EMPTY_BUCKET_MODEL, state), baker.bake(FILL_MODEL, state));
+        return new FabricDynamicBucketBakedModel(
+            baker.bake(EMPTY_BUCKET_MODEL, state), baker.bake(fillModelId(), state));
+    }
+
+    private ResourceLocation fillModelId() {
+        return ResourceLocation.fromNamespaceAndPath("advgenerators", "item/" + fluidPath + "_bucket_fill");
     }
 }

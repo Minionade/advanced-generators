@@ -1,0 +1,7 @@
+{
+  "parent": "advgenerators:item/bucket_fluid_fill_template",
+  "textures": {
+    "fluid": "advgenerators:block/steam/still",
+    "particle": "advgenerators:block/steam/still"
+  }
+}
