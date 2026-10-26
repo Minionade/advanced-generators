@@ -6,6 +6,7 @@ import buildcraft.api.v2.OperationMode;
 import buildcraft.api.v2.energy.EnergyConversion;
 import buildcraft.api.v2.energy.MjAmount;
 import buildcraft.api.v2.energy.MjPort;
+import buildcraft.api.v2.energy.MjPortDescriptor;
 import buildcraft.api.v2.energy.MjPortProvider;
 import buildcraft.api.v2.energy.MjTransferResult;
 import net.bdew.generators.machine.MachineBlockEntity;
