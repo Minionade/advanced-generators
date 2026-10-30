@@ -2,10 +2,10 @@
   "type": "advgenerators:carbon_source",
   "items": [
     {
-      "items": "minecraft:coal"
+      "item": "minecraft:coal"
     },
     {
-      "items": "minecraft:charcoal"
+      "item": "minecraft:charcoal"
     }
   ],
   "carbonValue": 1600

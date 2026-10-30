@@ -29,7 +29,7 @@ public final class GeneratorConfig {
         var result = new LinkedHashMap<String, Map<String, Integer>>();
         for (var kind : MachineKind.values()) if (kind.controller()) {
             var limits = new LinkedHashMap<String, Integer>();
-            limits.put("sensor", 10); limits.put("control", 10); limits.put("fluidInput", 5); limits.put("gasInput", 5);
+            limits.put("sensor", 10); limits.put("control", 10); limits.put("fluidInput", 5);
             switch (kind) {
                 case FUEL_TURBINE_CONTROLLER, STEAM_TURBINE_CONTROLLER -> {
                     limits.put("turbine", 50); limits.put("powerOutput", 6); limits.put("powerCapacitor", 10);

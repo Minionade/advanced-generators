@@ -38,6 +38,7 @@ public final class ModContent {
     public static final Map<String, FluidDef> GASES = new LinkedHashMap<>();
     static {
         for (var kind : MachineKind.values()) {
+            if (kind == MachineKind.FE_OUTPUT && Platform.isFabric()) continue; // Fabric offers the EU outputs only
             if (kind.isEuOutput() && !euEnergyApiLoaded()) continue;
             if (kind.isMjOutput() && !Platform.isModLoaded("buildcraftlib")) continue;
             var block = BLOCKS.register(kind.id(), () -> MachineBlock.create(kind)); MACHINES.put(kind, block);

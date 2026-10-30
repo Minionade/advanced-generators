@@ -74,7 +74,7 @@ public final class GeneratorsJeiPlugin implements IModPlugin {
             }
             return result;
         }
-        Minecraft.getInstance().getResourceManager().listResources("recipes", id -> id.getNamespace().equals(Generators.MOD_ID) && id.getPath().endsWith(".json"))
+        Minecraft.getInstance().getResourceManager().listResources("recipe", id -> id.getNamespace().equals(Generators.MOD_ID) && id.getPath().endsWith(".json"))
             .forEach((id, resource) -> readRecipe(id, resource, result));
         return result;
     }

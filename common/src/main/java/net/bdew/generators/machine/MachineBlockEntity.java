@@ -104,7 +104,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             connectedCore = null;
         }
         var candidates = MultiblockNetwork.findConnections(level, worldPosition, kind());
-        if (candidates.size() != 1) return false;
+        if (candidates.isEmpty()) return false;
         return level.getBlockEntity(candidates.iterator().next()) instanceof MachineBlockEntity core && connectTo(core);
     }
     public boolean canAcceptModule(MachineKind moduleKind) {
@@ -278,12 +278,12 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (maxOutput <= 0) { rpm = 0; return; }
         double delta = EngineMath.rpmDelta(rpm, c.maxRpm, c.inertiaMultiplier, c.inertiaExponent, inertia);
         if (control(3, energy < energyCapacity) && rpm > 1) { addEnergy(rpm / c.maxRpm * maxOutput); rpm -= delta * c.coilDrag; }
-        rpm = Math.max(0, rpm - delta * c.baseDrag);
+        rpm -= delta * c.baseDrag; // may dip below zero here; floored after the spin-up step, as in the original
         double maxSteam = maxOutput / c.steamEnergyDensity;
         double used = control(2, true) ? buffers[0].extract(Math.ceil(maxSteam), false) : 0;
-        steamHistory[steamIndex++ % 20] = used; consumptionRate = used;
+        steamHistory[steamIndex] = used; steamIndex = (steamIndex + 1) % steamHistory.length; consumptionRate = used;
         double average = Arrays.stream(steamHistory).sum() / 20;
-        if (average > 0) rpm = Math.min(rpm + delta * c.spinUp, Math.max(rpm, Math.min(c.maxRpm, average / maxSteam * c.maxRpm)));
+        if (average > 0) rpm = EngineMath.spinUp(rpm, average, maxSteam, c.maxRpm, delta, c.spinUp);
         if (rpm < 1) rpm = 0;
     }
     private void tickSyngas() {
@@ -330,7 +330,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         var c = GeneratorConfig.INSTANCE; boolean enabled = control(4,true);
         consumptionRate = processRate = 0;
         if (enabled && heat > c.exchangerStartHeat) {
-            Exchange transfer = exchange(buffers[1],buffers[2],"exchanger_cooling",Math.min(heat-c.exchangerStartHeat,exchangers*c.exchangerTransfer));
+            Exchange transfer = exchange(buffers[1],buffers[2],ExchangerRoles.COLD_INPUT,Math.min(heat-c.exchangerStartHeat,exchangers*c.exchangerTransfer));
             heat -= transfer.heat(); processRate = transfer.output();
             if (transfer.output() > 0) {
                 if (lastExchangerOutput == null || !lastExchangerOutput.equals(buffers[2].id) || lastExchangerOutputItem != buffers[2].item) processAverage.clear();
@@ -343,7 +343,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (enabled && heat < c.exchangerMaxHeat) {
             ResourceLocation inputId = buffers[0].id;
             boolean inputItem = buffers[0].item;
-            Exchange transfer = exchange(buffers[0],buffers[3],"exchanger_heating",Math.min(c.exchangerMaxHeat-heat,exchangers*c.exchangerTransfer));
+            Exchange transfer = exchange(buffers[0],buffers[3],ExchangerRoles.HOT_INPUT,Math.min(c.exchangerMaxHeat-heat,exchangers*c.exchangerTransfer));
             heat += transfer.heat(); consumptionRate = transfer.input();
             if (transfer.input() > 0) {
                 if (lastExchangerInput == null || !lastExchangerInput.equals(inputId) || lastExchangerInputItem != inputItem) consumptionAverage.clear();
@@ -473,7 +473,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             case FUEL_TURBINE_CONTROLLER -> !item && slot == 0 && recipes("liquid_fuel").stream().anyMatch(r -> r.value().matchesFluid(BuiltInRegistries.FLUID.get(id)));
             case STEAM_TURBINE_CONTROLLER -> !item && slot == 0 && steam(id);
             case SYNGAS_CONTROLLER -> !item && (slot == 0 && BuiltInRegistries.FLUID.get(id) == Fluids.WATER || slot == 1 && steam(id));
-            case EXCHANGER_CONTROLLER -> slot < 2 && exchangerRecipe(slot == 0 ? "exchanger_heating" : "exchanger_cooling",item,id,patch) != null;
+            case EXCHANGER_CONTROLLER -> slot < 2 && exchangerRecipe(ExchangerRoles.inputType(slot),item,id,patch) != null;
             default -> false;
         };
     }
