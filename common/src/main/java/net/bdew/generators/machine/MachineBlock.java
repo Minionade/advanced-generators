@@ -90,11 +90,11 @@ public class MachineBlock extends BaseEntityBlock {
         if (!level.isClientSide && target.kind().controller()) target.refreshOutputFaces();
         if (kind.controller() && !machine.hasRequiredModules()) {
             if (!level.isClientSide) {
-                player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete"), false);
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete").withStyle(net.minecraft.ChatFormatting.RED), false);
                 machine.missingRequiredModules().forEach((module,count) -> {
                     String moduleName = switch (module) { case "turbine" -> "Turbine"; case "mixingChamber" -> "MixingChamber"; default -> "HeatExchanger"; };
                     player.displayClientMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.incomplete.entry",
-                        net.minecraft.network.chat.Component.literal(Integer.toString(count)).withStyle(net.minecraft.ChatFormatting.RED),
+                        net.minecraft.network.chat.Component.literal(Integer.toString(count)),
                         net.minecraft.network.chat.Component.translatable("advgenerators.module."+moduleName+".name").withStyle(net.minecraft.ChatFormatting.RED)),false);
                 });
             }

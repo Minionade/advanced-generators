@@ -29,53 +29,92 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
     @Override
     public void render(MachineBlockEntity machine, float partialTick, PoseStack stack, MultiBufferSource buffers,
                        int packedLight, int packedOverlay) {
-        if (machine.getLevel() == null) return;
+        renderBorder(machine, stack, buffers, packedOverlay);
+    }
+
+    private static void renderBorder(MachineBlockEntity machine, PoseStack stack, MultiBufferSource buffers, int packedOverlay) {
         var level = machine.getLevel();
+        if (level == null) return;
         var pos = machine.getBlockPos();
-        int[] outputs = new int[Direction.values().length];
-        java.util.Arrays.fill(outputs, -1);
-        if (machine.kind().output()) {
-            for (Direction direction : Direction.values()) {
-                if (!connects(machine, pos.relative(direction))) outputs[direction.ordinal()] = machine.outputIndex(machine, direction);
-            }
-        }
+        var near = connections(machine);
+        int[] outputs = near.outputs;
+        // Ask for the buffer again for every quad: asking for another render type's buffer ends the previous one,
+        // so a consumer kept across the badge and arrow quads below would throw "Not building!".
         for (Direction face : Direction.values()) {
+            Direction top = top(face);
+            Direction right = right(face);
+            boolean u = !near.at(top);
+            boolean d = !near.at(top.getOpposite());
+            boolean l = !near.at(right.getOpposite());
+            boolean r = !near.at(right);
+            boolean tr = !u && !r && !near.at(top, right);
+            boolean tl = !u && !l && !near.at(top, right.getOpposite());
+            boolean br = !d && !r && !near.at(top.getOpposite(), right);
+            boolean bl = !d && !l && !near.at(top.getOpposite(), right.getOpposite());
+            boolean badge = outputs[face.ordinal()] >= 0;
+            boolean arrows = outputs[top.ordinal()] >= 0 || outputs[right.ordinal()] >= 0
+                || outputs[top.getOpposite().ordinal()] >= 0 || outputs[right.getOpposite().ordinal()] >= 0;
+            // Most faces of a large machine sit between other parts and have nothing to draw: leave them alone
+            // without looking anything up in the world.
+            if (!(u || d || l || r || tr || tl || br || bl || badge || arrows)) continue;
+
             BlockPos outside = pos.relative(face);
             boolean blocked = level.getBlockState(outside).isSolidRender(level, outside);
             // The machine's own position is opaque and so has no light; light each face from the space it faces.
             int light = LevelRenderer.getLightColor(level, outside);
 
-            Direction top = top(face);
-            Direction right = right(face);
             if (!blocked) {
-                boolean u = !connects(machine, pos.relative(top));
-                boolean d = !connects(machine, pos.relative(top.getOpposite()));
-                boolean l = !connects(machine, pos.relative(right.getOpposite()));
-                boolean r = !connects(machine, pos.relative(right));
-
                 if (u) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, light, packedOverlay);
                 if (d) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, light, packedOverlay);
                 if (l) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, light, packedOverlay);
                 if (r) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, light, packedOverlay);
 
-                if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, light, packedOverlay);
-                if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, light, packedOverlay);
-                if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, light, packedOverlay);
-                if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, light, packedOverlay);
+                if (tr) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, light, packedOverlay);
+                if (tl) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, light, packedOverlay);
+                if (br) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, light, packedOverlay);
+                if (bl) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, light, packedOverlay);
             }
 
             // BdLib's model enhancer places the output badge on its connected
             // face and puts a direction arrow on each perpendicular face.
-            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(OUTPUT)), face, 0, outputs[face.ordinal()], light, packedOverlay);
+            if (badge) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(OUTPUT)), face, 0, outputs[face.ordinal()], light, packedOverlay);
             if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 0, outputs[top.ordinal()], light, packedOverlay);
             if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 1, outputs[right.ordinal()], light, packedOverlay);
             if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 2, outputs[top.getOpposite().ordinal()], light, packedOverlay);
             if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 3, outputs[right.getOpposite().ordinal()], light, packedOverlay);
         }
+    }
+
+    /**
+     * Which of the 26 surrounding blocks belong to the same machine, and the output index of each face. Looked up
+     * only when the structure changes (or every half second, to follow chunk and data updates), not once per frame.
+     */
+    private static final class Connections {
+        long revision = -1, bucket = -1;
+        final boolean[] near = new boolean[27];
+        final int[] outputs = new int[6];
+        static int index(int dx, int dy, int dz) { return (dx + 1) * 9 + (dy + 1) * 3 + (dz + 1); }
+        boolean at(Direction a) { return near[index(a.getStepX(), a.getStepY(), a.getStepZ())]; }
+        boolean at(Direction a, Direction b) { return near[index(a.getStepX() + b.getStepX(), a.getStepY() + b.getStepY(), a.getStepZ() + b.getStepZ())]; }
+    }
+
+    private static Connections connections(MachineBlockEntity machine) {
+        var level = machine.getLevel();
+        Connections c = machine.borderCache instanceof Connections known ? known : null;
+        if (c == null) machine.borderCache = c = new Connections();
+        long revision = MultiblockNetwork.revision(level), bucket = level.getGameTime() / 10;
+        if (c.revision != revision || c.bucket != bucket) {
+            var pos = machine.getBlockPos();
+            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++)
+                if (dx != 0 || dy != 0 || dz != 0) c.near[Connections.index(dx, dy, dz)] = connects(machine, pos.offset(dx, dy, dz));
+            java.util.Arrays.fill(c.outputs, -1);
+            if (machine.kind().output())
+                for (Direction direction : Direction.values())
+                    if (!c.at(direction)) c.outputs[direction.ordinal()] = machine.outputIndex(machine, direction);
+            c.revision = revision;
+            c.bucket = bucket;
+        }
+        return c;
     }
 
     private static boolean connects(MachineBlockEntity machine, BlockPos targetPos) {

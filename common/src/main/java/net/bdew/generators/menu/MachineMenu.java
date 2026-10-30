@@ -13,8 +13,8 @@ import net.minecraft.world.item.ItemStack;
 
 /** Server-authoritative menu. All contents and gauges are synchronized by vanilla menu slots/data. */
 public final class MachineMenu extends AbstractContainerMenu {
-    private static final int SYNC_CHUNKS = 3;
-    private static final int MACHINE_VALUES = 95;
+    private static final int SYNC_CHUNKS = SyncChunks.PIECES;
+    private static final int MACHINE_VALUES = 96;
     private final MachineBlockEntity machine;
     private final ContainerData data;
     private final int[] clientData = new int[MACHINE_VALUES * SYNC_CHUNKS];
@@ -23,9 +23,10 @@ public final class MachineMenu extends AbstractContainerMenu {
         this.machine = machine;
         this.data = new ContainerData() {
             @Override public int get(int i) {
-                int value = machine.getLevel() != null && !machine.getLevel().isClientSide
-                    ? serverValue(i / SYNC_CHUNKS) : clientData[i];
-                return (value >>> ((i % SYNC_CHUNKS) * 15)) & 0x7fff;
+                // The server cuts each value into pieces; the client already holds the pieces it was sent.
+                if (machine.getLevel() != null && !machine.getLevel().isClientSide)
+                    return SyncChunks.piece(serverValue(i / SYNC_CHUNKS), i % SYNC_CHUNKS);
+                return clientData[i];
             }
             @Override public void set(int i,int value) { clientData[i] = value & 0x7fff; }
             @Override public int getCount() { return clientData.length; }
@@ -43,6 +44,7 @@ public final class MachineMenu extends AbstractContainerMenu {
         for(int col=0;col<9;col++) addSlot(new Slot(playerInventory,col,8+col*18,152));
     }
     private int serverValue(int i) {
+        if (i == 95) return (int)Math.min(Integer.MAX_VALUE, Math.round(machine.fuelPerTick() * 10000));
         if (i >= 59) return outputData((i - 59) / 6, (i - 59) % 6);
         return switch(i) {
                     case 0 -> (int)(Math.min(machine.energy,machine.energyCapacity) & 0x7fffffff);
@@ -107,7 +109,7 @@ public final class MachineMenu extends AbstractContainerMenu {
         return (item ? 0 : 1 << 30) | (registryId + 1);
     }
     private int value(int index) {
-        return data.get(index*SYNC_CHUNKS) | (data.get(index*SYNC_CHUNKS+1)<<15) | (data.get(index*SYNC_CHUNKS+2)<<30);
+        return SyncChunks.join(data.get(index*SYNC_CHUNKS), data.get(index*SYNC_CHUNKS+1), data.get(index*SYNC_CHUNKS+2));
     }
     public static MachineMenu client(int id, Inventory inventory, FriendlyByteBuf buf) {
         var pos=buf.readBlockPos();
@@ -177,6 +179,16 @@ public final class MachineMenu extends AbstractContainerMenu {
         }
         return new ItemStack(BuiltInRegistries.ITEM.byId(registryId)).getHoverName();
     }
+    public double fuelPerTick() { return value(95)/10000.0; }
+    private static net.minecraft.world.level.material.Fluid decodeFluid(int e) { return e==0||(e&(1<<30))==0?null:BuiltInRegistries.FLUID.byId((e&~(1<<30))-1); }
+    private static net.minecraft.world.item.Item decodeItem(int e) { return e==0||(e&(1<<30))!=0?null:BuiltInRegistries.ITEM.byId(e-1); }
+    /** The fluid held by a buffer, or null if it is empty or holds an item. */
+    public net.minecraft.world.level.material.Fluid bufferFluid(int index) { return decodeFluid(value(47+index)); }
+    public net.minecraft.world.item.Item bufferItem(int index) { return decodeItem(value(47+index)); }
+    public net.minecraft.world.level.material.Fluid lastInputFluid() { return decodeFluid(value(45)); }
+    public net.minecraft.world.item.Item lastInputItem() { return decodeItem(value(45)); }
+    public net.minecraft.world.level.material.Fluid lastOutputFluid() { return decodeFluid(value(46)); }
+    public net.minecraft.world.item.Item lastOutputItem() { return decodeItem(value(46)); }
     public boolean bufferIsFluid(int index) { return (value(47+index)&(1<<30))!=0; }
     public double bufferAmount(int index) { return value(51+index)/100.0; }
     public double bufferCapacity(int index) { return value(55+index)/100.0; }

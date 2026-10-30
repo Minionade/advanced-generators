@@ -1,12 +1,17 @@
 package net.bdew.generators.menu;
 
+import dev.architectury.hooks.fluid.FluidStackHooks;
 import net.bdew.generators.Generators;
 import net.bdew.generators.ModContent;
 import net.bdew.generators.machine.MachineKind;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -30,12 +35,14 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         if(outputConfigOpen) {
             int panelLeft=(width-124)/2, panelTop=(height-138)/2;
             int row=(int)Math.floor((mouseY-(panelTop+19))/19.0);
-            if(row>=0&&row<menu.outputCount()&&mouseX>=panelLeft+26&&mouseX<panelLeft+44&&button==0) {
+            boolean inRow=row>=0&&row<menu.outputCount()&&mouseY-(panelTop+19+19*row)<16;
+            if(inRow&&mouseX>=panelLeft+100&&mouseX<panelLeft+116&&button==0) {
                 clickMenuButton(row); return true;
             }
-            if(row>=0&&row<menu.outputCount()&&mouseX>=panelLeft+94&&mouseX<panelLeft+117) {
-                if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&(button==0||button==1)) clickMenuButton(6+row);
-                else if((menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER)&&button==2) clickMenuButton(12+row);
+            if(inRow&&mouseX>=panelLeft+82&&mouseX<panelLeft+98) {
+                var outputKind=menu.outputKind(row);
+                if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&outputKind==MachineKind.FLUID_OUTPUT_SELECT&&(button==0||button==1)) clickMenuButton(6+row);
+                else if(outputKind!=null&&outputKind.isEnergyOutput()&&button==0) clickMenuButton(12+row);
                 return true;
             }
             if(mouseX<panelLeft||mouseX>=panelLeft+124||mouseY<panelTop||mouseY>=panelTop+138) {
@@ -45,11 +52,11 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             return true;
         }
         if (button == 0 && menu.machine().kind()==MachineKind.CONTROL) {
-            if (inside(x,y,98,37)) { clickMenuButton(0); return true; }
-            if (inside(x,y,62,37)) { clickMenuButton(1); return true; }
+            if (inside(x,y,98,38)) { clickMenuButton(0); return true; }
+            if (inside(x,y,62,38)) { clickMenuButton(1); return true; }
         } else if (button == 0 && menu.machine().kind()==MachineKind.SENSOR) {
-            if (inside(x,y,53,37)) { clickMenuButton(0); return true; }
-            if (inside(x,y,71,37)) { clickMenuButton(1); return true; }
+            if (inside(x,y,53,38)) { clickMenuButton(0); return true; }
+            if (inside(x,y,71,38)) { clickMenuButton(1); return true; }
         }
         if(menu.machine().kind().controller()&&x>=153&&x<170) {
             if(y>=19&&y<36) { outputConfigOpen=!outputConfigOpen; return true; }
@@ -65,28 +72,47 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         drawMachineInfo(g,x,y);
         drawButtons(g,x,y,mouseX,mouseY);
     }
+    /** Output colours, the same as the badges drawn on the machine blocks. */
+    private static final int[] OUTPUT_COLORS={0xffff0000,0xff00ff00,0xff0000ff,0xffffff00,0xff00ffff,0xffff00ff};
+    private static final int[] SLOT_ICONS={101,133,117}; // both, cold, hot
+
     private void drawOutputConfig(GuiGraphics g,int mouseX,int mouseY) {
         int x=(width-124)/2,y=(height-138)/2;
         g.blit(Generators.id("textures/gui/outputs.png"),x,y,0,0,124,138,256,256);
         g.drawString(font,Component.translatable("advgenerators.gui.output.title"),x+8,y+6,0xff404040,false);
-        for(int row=0;row<menu.outputCount();row++) {
-            int rowY=y+19+row*19,mode=menu.outputMode(row);
-            var outputItem=ModContent.ALL_ITEMS.get(menu.outputKind(row).id());
-            if(outputItem!=null)g.renderItem(new ItemStack(outputItem.get()),x+8,rowY+1);
-            int iconU=switch(mode){case 1->37;case 2->21;case 3->69;default->53;};
-            drawAtlasButton(g,x+26,rowY,mouseX,mouseY,20,iconU,35);
-            g.drawString(font,menu.outputLabel(row),x+44,rowY+5,0xff303030,false);
-            g.drawString(font,format(menu.outputAverage(row)),x+72,rowY+5,0xff303030,false);
-            if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER) {
-                g.fill(x+94,rowY+1,x+117,rowY+17,0xffb0aaa0);
-                String selection=switch(menu.outputSelection(row)){case 1->"Cold";case 2->"Hot";default->"Both";};
-                g.drawCenteredString(font,selection,x+105,rowY+5,0xff202020);
-            } else if(menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
-                g.fill(x+94,rowY+1,x+117,rowY+17,0xffb0aaa0);
-                String limit=switch(menu.outputLimitIndex(row)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";};
-                g.drawCenteredString(font,limit,x+105,rowY+5,0xff202020);
+        for(int row=0;row<6;row++) {
+            int rowY=y+18+row*19;
+            if(row>=menu.outputCount()) {
+                // unused output: the crossed-out marker in the colour of that output
+                drawSpriteStretched(g,blockSprite(Generators.id("block/connected/disabled")),x+8,rowY+1,16,16,OUTPUT_COLORS[row]);
+                continue;
             }
+            var outputKind=menu.outputKind(row);
+            var outputItem=outputKind==null?null:ModContent.ALL_ITEMS.get(outputKind.id());
+            if(outputItem!=null) {
+                g.pose().pushPose(); g.pose().translate(x+9,rowY+2,0); g.pose().scale(14/16f,14/16f,1);
+                g.renderItem(new ItemStack(outputItem.get()),0,0);
+                g.pose().popPose();
+            }
+            boolean power=outputKind!=null&&(outputKind.isEnergyOutput()||outputKind.isMjOutput());
+            boolean fluid=outputKind==MachineKind.FLUID_OUTPUT_SELECT;
+            if(power) g.drawString(font,GuiFormat.perTick(menu.outputAverage(row),menu.outputUnit(row)),x+28,rowY+5,0xff404040,false);
+            else if(fluid) g.drawString(font,GuiFormat.fluidPerTick(menu.outputAverage(row)),x+28,rowY+5,0xff404040,false);
+            if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&fluid) {
+                // which of the exchanger's fluids this output takes
+                drawAtlasButton(g,x+82,rowY+1,mouseX,mouseY,20,SLOT_ICONS[Math.floorMod(menu.outputSelection(row),3)],35);
+            } else if(outputKind!=null&&outputKind.isEnergyOutput()) {
+                // per-face FE output limit (an addition of this edition)
+                drawTextButton(g,x+82,rowY+1,mouseX,mouseY,switch(menu.outputLimitIndex(row)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";});
+            }
+            int mode=menu.outputMode(row);
+            int iconU=switch(mode){case 1->37;case 2->21;case 3->69;default->53;};
+            drawAtlasButton(g,x+100,rowY+1,mouseX,mouseY,20,iconU,35);
         }
+    }
+    private void drawTextButton(GuiGraphics g,int x,int y,int mx,int my,String label) {
+        g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:20,18,16,16,256,256);
+        g.drawCenteredString(font,label,x+8,y+4,0xff202020);
     }
     private void drawButtons(GuiGraphics g,int x,int y,int mouseX,int mouseY) {
         // Button positions below are in screen coordinates, so compare them with
@@ -97,31 +123,31 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             drawAtlasButton(g,x+153,y+19,mx,my,0,85,35);
             drawAtlasButton(g,x+153,y+61,mx,my,52,69,35);
         } else if(kind==MachineKind.CONTROL) {
+            // The slot frames are part of the background image; the icons are drawn plainly on top.
             String[] icons={"disabled","fuel","steam","energy","exchange","heating","mix"};
             int action=Math.max(0,Math.min(icons.length-1,menu.controlAction()));
-            drawTextureButton(g,x+98,y+37,mx,my,Generators.id("textures/control/"+icons[action]+".png"));
-            drawAtlasButton(g,x+62,y+37,mx,my,20,menu.controlHigh()?37:21,35);
+            g.blit(Generators.id("textures/control/"+icons[action]+".png"),x+98,y+38,0,0,16,16,16,16);
+            drawTorch(g,x+62,y+38,menu.controlHigh());
         } else if(kind==MachineKind.SENSOR) {
-            drawTextureButton(g,x+53,y+37,mx,my,sensorIcon());
-            drawTextureButton(g,x+71,y+37,mx,my,conditionIcon());
+            g.blit(sensorIcon(),x+53,y+38,0,0,16,16,16,16);
+            g.blit(conditionIcon(),x+71,y+38,0,0,16,16,16,16);
             var controller=menu.machine().controller();
             if(controller!=null&&controller.kind()==MachineKind.EXCHANGER_CONTROLLER) {
                 int metric=controller.sensorMetricFor(menu.sensorMetric());
                 if(metric>=2&&metric<=5&&menu.sensorCondition()==1)
-                    g.renderItem(new ItemStack(Items.COBBLESTONE),x+71,y+37);
+                    g.renderItem(new ItemStack(Items.COBBLESTONE),x+71,y+38);
                 else if(metric>=2&&metric<=5&&menu.sensorCondition()==2)
-                    g.renderItem(new ItemStack(Items.WATER_BUCKET),x+71,y+37);
+                    g.renderItem(new ItemStack(Items.WATER_BUCKET),x+71,y+38);
             }
-            drawAtlasButton(g,x+107,y+37,mx,my,20,menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?37:21,35);
+            drawTorch(g,x+107,y+38,menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED));
         }
+    }
+    private void drawTorch(GuiGraphics g,int x,int y,boolean on) {
+        drawSpriteStretched(g,blockSprite(ResourceLocation.withDefaultNamespace(on?"block/redstone_torch":"block/redstone_torch_off")),x,y,16,16,WHITE);
     }
     private void drawAtlasButton(GuiGraphics g,int x,int y,int mx,int my,int baseU,int iconU,int iconV) {
         g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:baseU==52?52:20,18,16,16,256,256);
         g.blit(WIDGETS,x+1,y+1,iconU,iconV,14,14,256,256);
-    }
-    private void drawTextureButton(GuiGraphics g,int x,int y,int mx,int my,ResourceLocation icon) {
-        g.blit(WIDGETS,x,y,mx>=x&&mx<x+16&&my>=y&&my<y+16?36:20,18,16,16,256,256);
-        g.blit(icon,x,y,0,0,16,16,16,16);
     }
     private static boolean inside(int x,int y,int bx,int by) { return x>=bx&&x<bx+16&&y>=by&&y<by+16; }
     private ResourceLocation sensorIcon() {
@@ -149,35 +175,81 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
         else name=switch(menu.sensorCondition()){case 0->"fill/empty";case 1->"fill/not_empty";case 2->"fill/5";case 3->"fill/25";case 4->"fill/50";case 5->"fill/75";case 6->"fill/95";case 7->"fill/not_full";default->"fill/full";};
         return Generators.id("textures/sensor/"+name+".png");
     }
+    private static TextureAtlasSprite blockSprite(ResourceLocation id) {
+        return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(id);
+    }
+    private static TextureAtlasSprite itemSprite(net.minecraft.world.item.Item item) {
+        return Minecraft.getInstance().getItemRenderer().getItemModelShaper().getItemModel(item).getParticleIcon();
+    }
+    private static final int WHITE=0xffffffff;
+
+    /** Sprite of the resource in a buffer (fluid still texture or item icon), or null when it is empty. */
+    private record Icon(TextureAtlasSprite sprite,int color) {}
+    private static Icon iconFor(Fluid fluid,net.minecraft.world.item.Item item) {
+        if(fluid!=null) return new Icon(FluidStackHooks.getStillTexture(fluid),FluidStackHooks.getColor(fluid));
+        if(item!=null) return new Icon(itemSprite(item),WHITE);
+        return null;
+    }
+    private Icon bufferIcon(int index) { return iconFor(menu.bufferFluid(index),menu.bufferItem(index)); }
+
+    private static void tint(GuiGraphics g,int argb) {
+        g.setColor(((argb>>16)&0xff)/255f,((argb>>8)&0xff)/255f,(argb&0xff)/255f,1f);
+    }
+    private static void untint(GuiGraphics g) { g.setColor(1f,1f,1f,1f); }
+
+    /** The sprite stretched over a rectangle. */
+    private static void drawSpriteStretched(GuiGraphics g,TextureAtlasSprite sprite,int x,int y,int w,int h,int argb) {
+        tint(g,argb); g.blit(x,y,0,w,h,sprite); untint(g);
+    }
+    /** The sprite repeated in 16x16 tiles from the bottom left, as the original's gauges did. */
+    private static void drawSpriteTiled(GuiGraphics g,TextureAtlasSprite sprite,int x,int y,int w,int h,int argb) {
+        if(w<=0||h<=0) return;
+        g.enableScissor(x,y,x+w,y+h);
+        tint(g,argb);
+        for(int tx=x;tx<x+w;tx+=16) for(int ty=y+h;ty>y;ty-=16) g.blit(tx,ty-16,0,16,16,sprite);
+        untint(g);
+        g.disableScissor();
+    }
+    /** A resource gauge: the buffer's contents tiled up from the bottom, then the scale marks on top. */
+    private void drawBufferGauge(GuiGraphics g,int x,int y,int w,int h,int buffer,int overlayU,int overlayV) {
+        var icon=bufferIcon(buffer);
+        int fill=(int)Math.round(h*Math.max(0,Math.min(1,menu.bufferFill(buffer))));
+        if(icon!=null&&fill>0) drawSpriteTiled(g,icon.sprite(),x,y+h-fill,w,fill,icon.color());
+        if(overlayU>=0) g.blit(WIDGETS,x,y,overlayU,overlayV,w,h,256,256);
+    }
+    /** A sprite stretched over a rectangle and revealed from one edge by the fill fraction. */
+    private static void drawSpriteFill(GuiGraphics g,TextureAtlasSprite sprite,int x,int y,int w,int h,double fill,boolean fromTop,int argb) {
+        int part=(int)Math.round((fromTop?h:h)*Math.max(0,Math.min(1,fill)));
+        if(part<=0) return;
+        g.enableScissor(x,fromTop?y:y+h-part,x+w,fromTop?y+part:y+h);
+        drawSpriteStretched(g,sprite,x,y,w,h,argb);
+        g.disableScissor();
+    }
     private void drawGauges(GuiGraphics g,int x,int y) {
         switch(menu.machine().kind()) {
-            case FUEL_TURBINE_CONTROLLER -> drawVertical(g,x+9,y+19,9,58,menu.bufferFill(0),0xffe2a43b);
-            case STEAM_TURBINE_CONTROLLER -> drawVertical(g,x+9,y+19,9,58,menu.bufferFill(0),0xff58b6df);
+            case FUEL_TURBINE_CONTROLLER, STEAM_TURBINE_CONTROLLER -> {
+                drawBufferGauge(g,x+9,y+19,9,58,0,10,0);
+                int fill=(int)Math.round(58*(menu.capacity()<=0?0:Math.max(0,Math.min(1,(double)menu.energy()/menu.capacity()))));
+                if(fill>0) g.blit(WIDGETS,x+61,y+19+58-fill,0,58-fill,9,fill,256,256);
+            }
             case SYNGAS_CONTROLLER -> {
-                drawVertical(g,x+11,y+19,10,35,menu.bufferFill(0),0xff519ee0);
-                drawVertical(g,x+57,y+19,10,35,menu.bufferFill(2),0xff57c59a);
-                drawHorizontal(g,x+30,y+61,37,8,menu.bufferFill(1),0xff55b8e8);
-                drawHorizontal(g,x+30,y+69,37,8,menu.carbonFill(),0xffa9a9a9);
-                int heat=(int)(12*menu.heatFill()); if(heat>0)g.fill(x+10,y+75-heat,x+12,y+75,0x99ff5722);
+                drawBufferGauge(g,x+11,y+19,10,35,0,137,54);
+                drawBufferGauge(g,x+57,y+19,10,35,2,137,54);
+                drawSpriteFill(g,FluidStackHooks.getStillTexture(ModContent.GASES.get("steam").source.get()),x+30,y+61,37,8,menu.bufferFill(1),true,WHITE);
+                drawSpriteFill(g,blockSprite(ResourceLocation.withDefaultNamespace("block/coal_block")),x+30,y+69,37,8,menu.carbonFill(),false,WHITE);
+                if(menu.heatingChambers()>0) {
+                    int fill=(int)Math.round(14*Math.max(0,Math.min(1,menu.heatFill())));
+                    if(fill>0) g.blit(WIDGETS,x+9,y+62+14-fill,69,19+14-fill,14,fill,256,256);
+                } else g.blit(WIDGETS,x+9,y+62,69,35,14,14,256,256);
             }
             case EXCHANGER_CONTROLLER -> {
-                drawVertical(g,x+9,y+19,9,58,menu.bufferFill(1),0xff60a9de);
-                drawHorizontal(g,x+21,y+19,37,16,menu.bufferFill(0),0xffe4a044);
-                drawVertical(g,x+61,y+19,9,58,menu.bufferFill(2),0xff64b3df);
-                drawHorizontal(g,x+21,y+61,37,16,menu.bufferFill(3),0xffe4a044);
+                drawBufferGauge(g,x+9,y+19,9,58,1,10,0);
+                drawBufferGauge(g,x+61,y+19,9,58,2,10,0);
+                drawBufferGauge(g,x+21,y+19,37,16,0,-1,0);
+                drawBufferGauge(g,x+21,y+61,37,16,3,-1,0);
             }
             default -> { }
         }
-        if(menu.machine().kind()==MachineKind.FUEL_TURBINE_CONTROLLER||menu.machine().kind()==MachineKind.STEAM_TURBINE_CONTROLLER)
-            drawVertical(g,x+61,y+19,9,58,menu.capacity()<=0?0:(double)menu.energy()/menu.capacity(),0xff65b95a);
-    }
-    private static void drawVertical(GuiGraphics g,int x,int y,int w,int h,double amount,int color) {
-        int fill=(int)Math.round((h-2)*Math.max(0,Math.min(1,amount)));
-        if(fill>0)g.fill(x+1,y+h-1-fill,x+w-1,y+h-1,color);
-    }
-    private static void drawHorizontal(GuiGraphics g,int x,int y,int w,int h,double amount,int color) {
-        int fill=(int)Math.round((w-2)*Math.max(0,Math.min(1,amount)));
-        if(fill>0)g.fill(x+1,y+1,x+1+fill,y+h-1,color);
     }
     private ResourceLocation background() {
         String name = switch(menu.machine().kind()) {
@@ -193,25 +265,34 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private void drawMachineInfo(GuiGraphics g,int x,int y) {
         var machine=menu.machine();
         if(machine.kind()==MachineKind.SYNGAS_CONTROLLER) {
-            drawInfo(g,x,y,21,48,106,16,signed(menu.heatDelta())+" HU");
-            drawItemInfo(g,x,y,32,Items.COAL_BLOCK,format(menu.consumption())+"/t");
-            drawInfo(g,x,y,43,64,90,32,format(menu.process())+" mB/t");
+            drawInfo(g,x,y,21,48,106,16,menu.heatingChambers()>0?GuiFormat.delta(menu.heatDelta(),"hu"):Component.literal("-----"));
+            drawSpriteInfo(g,x,y,32,new Icon(blockSprite(ResourceLocation.withDefaultNamespace("block/coal_block")),WHITE),GuiFormat.perTick(menu.consumption(),"carbon_short"));
+            drawSpriteInfo(g,x,y,43,new Icon(FluidStackHooks.getStillTexture(ModContent.GASES.get("syngas").source.get()),WHITE),GuiFormat.fluidPerTick(menu.process()));
         } else if(machine.kind()==MachineKind.EXCHANGER_CONTROLLER) {
-            drawInfo(g,x,y,21,96,90,32,format(menu.heat())+" HU");
-            drawInfo(g,x,y,32,48,106,16,format(menu.output())+" HU/t");
-            drawInfo(g,x,y,43,0,122,16,format(menu.heatLoss())+" HU/t");
-            drawInfo(g,x,y,54,64,90,32,format(menu.consumption())+(menu.exchangerInputIsFluid()?" mB/t":"/t"));
-            drawInfo(g,x,y,65,64,90,32,format(menu.process())+(menu.exchangerOutputIsFluid()?" mB/t":"/t"));
+            drawInfo(g,x,y,21,96,90,32,GuiFormat.amount(menu.heat(),"hu"));
+            drawInfo(g,x,y,32,48,106,16,GuiFormat.perTick(menu.output(),"hu"));
+            drawInfo(g,x,y,43,0,122,16,GuiFormat.perTick(menu.heatLoss(),"hu"));
+            drawSpriteInfo(g,x,y,54,orDisabled(iconFor(menu.lastInputFluid(),menu.lastInputItem())),
+                menu.exchangerInputIsFluid()?GuiFormat.fluidPerTick(menu.consumption()):GuiFormat.perTick(menu.consumption()));
+            drawSpriteInfo(g,x,y,65,orDisabled(iconFor(menu.lastOutputFluid(),menu.lastOutputItem())),
+                menu.exchangerOutputIsFluid()?GuiFormat.fluidPerTick(menu.process()):GuiFormat.perTick(menu.process()));
         } else if(machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER || machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER) {
-            drawInfo(g,x,y,21,0,90,32,Integer.toString(menu.turbines()));
-            drawInfo(g,x,y,32,32,106,16,format(menu.output())+" FE/t");
+            drawInfo(g,x,y,21,0,90,32,Component.literal(Integer.toString(menu.turbines())));
+            drawInfo(g,x,y,32,32,106,16,GuiFormat.energyPerTick(menu.output()));
             if (machine.kind()==MachineKind.FUEL_TURBINE_CONTROLLER)
-                drawInfo(g,x,y,43,64,90,32,format(menu.consumption())+" mB/t");
+                drawInfo(g,x,y,43,64,90,32,GuiFormat.fluidPerTick(menu.fuelPerTick()));
             else
-                drawInfo(g,x,y,43,32,122,32,format(menu.rpm())+" RPM");
-            drawInfo(g,x,y,54,48,90,16,format(menu.generation())+" FE/t");
-            drawInfo(g,x,y,65,64,90,32,format(menu.consumption())+" mB/t");
+                drawInfo(g,x,y,43,32,122,32,GuiFormat.amount(menu.rpm(),"rpm"));
+            drawInfo(g,x,y,54,48,90,16,GuiFormat.energyPerTick(menu.generation()));
+            Icon fuel=machine.kind()==MachineKind.STEAM_TURBINE_CONTROLLER
+                ?new Icon(FluidStackHooks.getStillTexture(ModContent.GASES.get("steam").source.get()),WHITE)
+                :orDisabled(bufferIcon(0));
+            drawSpriteInfo(g,x,y,65,fuel,GuiFormat.fluidPerTick(menu.consumption()));
         }
+    }
+    /** The marker shown where there is no resource yet: the crossed-out texture, in red. */
+    private Icon orDisabled(Icon icon) {
+        return icon!=null?icon:new Icon(blockSprite(Generators.id("block/connected/disabled")),0xffff0000);
     }
     private Component sensorMetricTooltip() {
         if (menu.machine().controller() == null) return Component.translatable("advgenerators.sensor.disabled");
@@ -278,21 +359,15 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             default -> Component.translatable("advgenerators.sensor.param.fill.full");
         };
     }
-    private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,String value) {
-        // The public source-region overload expects atlas pixel coordinates
-        // (not normalized UVs). Sample the full icon and scale it to BdLib's
-        // original 8x8 info-widget size.
+    private void drawInfo(GuiGraphics g,int x,int y,int row,int iconU,int iconV,int iconSize,Component value) {
+        // Sample the whole icon from the widget sheet and scale it to the original's 8x8 info icon.
         g.blit(WIDGETS,x+76,y+row+1,8,8,(float)iconU,(float)iconV,
             iconSize,iconSize,TEXTURE_SIZE,TEXTURE_SIZE);
-        g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
+        g.drawString(font,value,x+87,y+row+1,0xff404040,false);
     }
-    private void drawItemInfo(GuiGraphics g,int x,int y,int row,net.minecraft.world.item.Item item,String value) {
-        g.pose().pushPose();
-        g.pose().translate(x+76,y+row+1,0);
-        g.pose().scale(.5f,.5f,1);
-        g.renderItem(new ItemStack(item),0,0);
-        g.pose().popPose();
-        g.drawString(font,Component.literal(value),x+87,y+row+1,0xff404040,false);
+    private void drawSpriteInfo(GuiGraphics g,int x,int y,int row,Icon icon,Component value) {
+        drawSpriteStretched(g,icon.sprite(),x+76,y+row+1,8,8,icon.color());
+        g.drawString(font,value,x+87,y+row+1,0xff404040,false);
     }
     private static String format(double value) {
         return String.format(java.util.Locale.ROOT,"%.1f",value).replaceAll("\\.0$","");
@@ -345,9 +420,9 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             int action=Math.max(0,Math.min(actions.length-1,menu.controlAction()));
             return List.of(Component.translatable("advgenerators.control.action."+actions[action]));
         }
-        if(kind==MachineKind.SENSOR&&inside(x,y,53,37)) return List.of(sensorMetricTooltip());
-        if(kind==MachineKind.SENSOR&&inside(x,y,71,37)) return List.of(sensorConditionText(menu.machine().controller()));
-        if(kind==MachineKind.SENSOR&&inside(x,y,107,37)) return List.of(Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"));
+        if(kind==MachineKind.SENSOR&&inside(x,y,53,38)) return List.of(sensorMetricTooltip());
+        if(kind==MachineKind.SENSOR&&inside(x,y,71,38)) return List.of(sensorConditionText(menu.machine().controller()));
+        if(kind==MachineKind.SENSOR&&inside(x,y,107,38)) return List.of(Component.translatable(menu.machine().getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)?"advgenerators.sensor.on":"advgenerators.sensor.off"));
         List<Component> gaugeTip=gaugeTooltip(x,y);
         if(!gaugeTip.isEmpty()) return gaugeTip;
         if(x>=76&&x<84) {

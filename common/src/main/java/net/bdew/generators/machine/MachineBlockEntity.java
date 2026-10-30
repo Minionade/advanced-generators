@@ -51,6 +51,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     private final RollingAverage processAverage = new RollingAverage();
     private final RollingAverage heatLossAverage = new RollingAverage();
     private final RollingAverage heatDeltaAverage = new RollingAverage();
+    /** The client-side border renderer keeps what it knows about the neighbours here. */
+    Object borderCache;
     private MultiblockNetwork cachedNetwork;
     private long networkRevision = -1, networkTick = -1;
     private BlockPos connectedCore;
@@ -244,6 +246,11 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     private List<RecipeHolder<MachineRecipe>> recipes(String type) { return level.getRecipeManager().getAllRecipesFor(ModContent.RECIPE_TYPES.get(type).get()); }
     public double carbonValue(ItemStack stack) {
         return recipes("carbon_source").stream().map(RecipeHolder::value).filter(r -> r.ingredient.test(stack)).mapToDouble(r -> r.value("carbonValue")).findFirst().orElse(0);
+    }
+    /** Fuel the turbines would burn per tick at full output, as the original's screen showed. */
+    public double fuelPerTick() {
+        double value = fuelValue();
+        return value > 0 ? maxOutput / value / efficiency : 0;
     }
     private double fuelValue() {
         if (buffers[0].empty()) return 0;
@@ -661,6 +668,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         lastExchangerOutput=ResourceLocation.tryParse(tag.getString("lastExchangerOutput"));
         lastExchangerInputItem=tag.getBoolean("lastExchangerInputItem"); lastExchangerOutputItem=tag.getBoolean("lastExchangerOutputItem");
         for(int i=0;i<6;i++) { outputMode[i]=i<modes.length?Math.clamp(modes[i],0,3):0; outputSelection[i]=i<selections.length?Math.clamp(selections[i],0,2):0; outputLimit[i]=i<limits.length?Math.clamp(limits[i],1,Integer.MAX_VALUE):Integer.MAX_VALUE; }
+        // Whatever changed, clients redraw the machine border from this data, so let them look again.
+        if (level != null && level.isClientSide) MultiblockNetwork.invalidate(level);
         outputConfigs.clear();
         for (Tag faceEntry : tag.getList("outputConfigs", Tag.TAG_COMPOUND)) {
             if (!(faceEntry instanceof CompoundTag faceTag)) continue;
