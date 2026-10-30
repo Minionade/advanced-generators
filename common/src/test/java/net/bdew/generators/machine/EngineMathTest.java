@@ -48,4 +48,25 @@ class EngineMathTest {
         assertEquals(3, EngineMath.heatTransfer(10, 1000, 3, 5, 1), 1e-9);   // space: 3 / 1
         assertEquals(0, EngineMath.heatTransfer(10, 10, 100, 0, 1));
     }
+
+    /**
+     * Tier 2 turbine (150 FE/t, inertia 1.1) with steam always available. Both the original 1.20.1 mod and this port,
+     * run on dedicated servers, gave 3260 RPM after 960 ticks and 4545 RPM after 1860 ticks.
+     */
+    @Test void steamTurbineRampMatchesOriginalServerRun() {
+        double maxOutput = 150, inertia = 1.1, maxSteam = maxOutput / DENSITY;
+        double[] history = new double[20];
+        double rpm = 0;
+        for (int tick = 1; tick <= 1860; tick++) {
+            double delta = EngineMath.rpmDelta(rpm, MAX_RPM, MULT, EXP, inertia);
+            if (rpm > 1) rpm -= delta * .75;
+            rpm -= delta * BASE_DRAG;
+            history[tick % 20] = Math.ceil(maxSteam);
+            double average = java.util.Arrays.stream(history).sum() / 20;
+            if (average > 0) rpm = EngineMath.spinUp(rpm, average, maxSteam, MAX_RPM, delta, SPIN_UP);
+            if (rpm < 1) rpm = 0;
+            if (tick == 960) assertEquals(3260, rpm, 1);
+        }
+        assertEquals(4545, rpm, 1);
+    }
 }
