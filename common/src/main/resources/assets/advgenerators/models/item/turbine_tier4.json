@@ -1,3 +1,81 @@
 {
-  "parent": "advgenerators:block/turbine_tier4"
+  "parent": "minecraft:block/block",
+  "textures": {
+    "side": "advgenerators:block/turbine/tier4/main",
+    "top": "advgenerators:block/turbine/tier4/top",
+    "frame": "advgenerators:block/connected/edge",
+    "particle": "advgenerators:block/turbine/tier4/main"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#side",
+          "cullface": "south"
+        },
+        "east": {
+          "texture": "#side",
+          "cullface": "east"
+        },
+        "west": {
+          "texture": "#side",
+          "cullface": "west"
+        },
+        "down": {
+          "texture": "#side",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top",
+          "cullface": "up"
+        }
+      }
+    },
+    {
+      "from": [
+        -0.008,
+        -0.008,
+        -0.008
+      ],
+      "to": [
+        16.008,
+        16.008,
+        16.008
+      ],
+      "faces": {
+        "down": {
+          "texture": "#frame"
+        },
+        "up": {
+          "texture": "#frame"
+        },
+        "north": {
+          "texture": "#frame"
+        },
+        "south": {
+          "texture": "#frame"
+        },
+        "east": {
+          "texture": "#frame"
+        },
+        "west": {
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
 }

@@ -3,6 +3,6 @@
   "textures": {
     "side": "advgenerators:block/syngascontroller/main",
     "top": "advgenerators:block/syngascontroller/top",
-    "bottom": "advgenerators:block/syngascontroller/bottom"
+    "bottom": "advgenerators:block/syngascontroller/top"
   }
 }

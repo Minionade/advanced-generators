@@ -1,3 +1,82 @@
 {
-  "parent": "advgenerators:block/fuel_turbine_controller"
+  "parent": "minecraft:block/block",
+  "textures": {
+    "side": "advgenerators:block/turbinecontroller/main",
+    "top": "advgenerators:block/turbinecontroller/top",
+    "bottom": "advgenerators:block/turbinecontroller/bottom",
+    "frame": "advgenerators:block/connected/edge",
+    "particle": "advgenerators:block/turbinecontroller/main"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#side",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#side",
+          "cullface": "south"
+        },
+        "east": {
+          "texture": "#side",
+          "cullface": "east"
+        },
+        "west": {
+          "texture": "#side",
+          "cullface": "west"
+        },
+        "down": {
+          "texture": "#bottom",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top",
+          "cullface": "up"
+        }
+      }
+    },
+    {
+      "from": [
+        -0.008,
+        -0.008,
+        -0.008
+      ],
+      "to": [
+        16.008,
+        16.008,
+        16.008
+      ],
+      "faces": {
+        "down": {
+          "texture": "#frame"
+        },
+        "up": {
+          "texture": "#frame"
+        },
+        "north": {
+          "texture": "#frame"
+        },
+        "south": {
+          "texture": "#frame"
+        },
+        "east": {
+          "texture": "#frame"
+        },
+        "west": {
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
 }

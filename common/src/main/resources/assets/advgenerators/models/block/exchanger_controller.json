@@ -3,6 +3,6 @@
   "textures": {
     "side": "advgenerators:block/exchangercontroller/main",
     "top": "advgenerators:block/exchangercontroller/top",
-    "bottom": "advgenerators:block/exchangercontroller/bottom"
+    "bottom": "advgenerators:block/exchangercontroller/top"
   }
 }

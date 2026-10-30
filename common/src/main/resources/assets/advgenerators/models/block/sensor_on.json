@@ -1,6 +1,9 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "advgenerators:block/rotated",
   "textures": {
-    "all": "advgenerators:block/sensor/front_on"
+    "front": "advgenerators:block/sensor/front_on",
+    "side": "advgenerators:block/sensor/side_on",
+    "back": "advgenerators:block/sensor/back",
+    "particle": "advgenerators:block/sensor/back"
   }
 }
