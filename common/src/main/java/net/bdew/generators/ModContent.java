@@ -56,6 +56,15 @@ public final class ModContent {
     }
     public static final RegistrySupplier<BlockEntityType<MachineBlockEntity>> MACHINE_ENTITY = ENTITIES.register("machine", () ->
         BlockEntityType.Builder.of(TransferPlatform::createMachineBlockEntity, MACHINES.values().stream().map(RegistrySupplier::get).toArray(Block[]::new)).build(null));
+    /**
+     * The 1.20.1 mod registered one block entity type per block, named after the block. Chunks saved by it refer to
+     * those names, so they stay registered (creating the same unified entity) and old machines load with their data.
+     */
+    static {
+        for (var kind : MACHINES.keySet())
+            ENTITIES.register(kind.id(), () ->
+                BlockEntityType.Builder.of(TransferPlatform::createMachineBlockEntity, MACHINES.values().stream().map(RegistrySupplier::get).toArray(Block[]::new)).build(null));
+    }
     public static final RegistrySupplier<MenuType<MachineMenu>> MACHINE_MENU = MENUS.register("machine", () -> MenuRegistry.ofExtended(MachineMenu::client));
     public static final RegistrySupplier<CreativeModeTab> TAB = TABS.register("main", () -> CreativeTabRegistry.create(builder -> builder
         .title(Component.translatable("itemGroup.bdew.generators"))

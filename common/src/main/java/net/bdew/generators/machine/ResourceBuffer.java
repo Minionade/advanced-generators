@@ -16,14 +16,19 @@ public final class ResourceBuffer {
     public DataComponentPatch components = DataComponentPatch.EMPTY;
     public double amount;
     public double capacity;
+    /** Items take up 250 times the room of a fluid amount, as in the original (a 16000 buffer holds 64 items). */
+    public static final double ITEM_CAPACITY_DIVISOR = 250;
     public ResourceBuffer(double capacity) { this.capacity = capacity; }
+    public double capacityFor(boolean item) { return item ? capacity / ITEM_CAPACITY_DIVISOR : capacity; }
+    /** Capacity for what the buffer currently holds. */
+    public double effectiveCapacity() { return capacityFor(item); }
     public boolean empty() { return id == null || amount <= 1e-9; }
     public boolean same(boolean item, ResourceLocation id, DataComponentPatch components) {
         return !empty() && this.item == item && this.id.equals(id) && this.components.equals(components);
     }
     public double insert(boolean item, ResourceLocation id, DataComponentPatch components, double quantity, boolean simulate) {
         if (!Double.isFinite(quantity) || quantity <= 0 || id == null || (!empty() && !same(item, id, components))) return 0;
-        double accepted = Math.max(0, Math.min(quantity, capacity - amount));
+        double accepted = Math.max(0, Math.min(quantity, capacityFor(item) - amount));
         if (!simulate && accepted > 0) { this.item = item; this.id = id; this.components = components; amount += accepted; }
         return accepted;
     }
@@ -53,7 +58,7 @@ public final class ResourceBuffer {
         ResourceLocation parsed = ResourceLocation.tryParse(tag.getString("id"));
         double n = tag.getDouble("amount"); boolean isItem = tag.getBoolean("item");
         if (parsed == null || !Double.isFinite(n) || n <= 0 || !(isItem ? BuiltInRegistries.ITEM.containsKey(parsed) : BuiltInRegistries.FLUID.containsKey(parsed))) return;
-        id = parsed; item = isItem; amount = Math.min(n, capacity);
+        id = parsed; item = isItem; amount = Math.min(n, capacityFor(isItem));
         if (tag.contains("components")) components = DataComponentPatch.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag.get("components")).result().orElse(DataComponentPatch.EMPTY);
     }
 }

@@ -82,7 +82,7 @@ public final class MachineMenu extends AbstractContainerMenu {
                         yield buffer.empty()?0:encodeResource(buffer.item,buffer.id);
                     }
                     case 51,52,53,54 -> (int)Math.min(Integer.MAX_VALUE,Math.round(machine.buffers[i-51].amount*100));
-                    case 55,56,57,58 -> (int)Math.min(Integer.MAX_VALUE,Math.round(machine.buffers[i-55].capacity*100));
+                    case 55,56,57,58 -> (int)Math.min(Integer.MAX_VALUE,Math.round(machine.buffers[i-55].effectiveCapacity()*100));
                     default -> 0;
         };
     }
@@ -203,7 +203,7 @@ public final class MachineMenu extends AbstractContainerMenu {
     public boolean exchangerInputIsFluid() { return (value(45) & (1 << 30)) != 0; }
     public boolean exchangerOutputIsFluid() { return (value(46) & (1 << 30)) != 0; }
     private static int fill(ResourceBuffer buffer) {
-        return fill(buffer.amount,buffer.capacity);
+        return fill(buffer.amount,buffer.effectiveCapacity());
     }
     private static int fill(double amount,double capacity) { return capacity<=0?0:(int)Math.round(1000*Math.max(0,Math.min(1,amount/capacity))); }
     @Override public boolean clickMenuButton(Player player,int button) {

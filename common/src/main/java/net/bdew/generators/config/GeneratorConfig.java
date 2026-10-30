@@ -6,7 +6,10 @@ import java.nio.file.Path;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.bdew.generators.legacy.LegacyConfig;
 import net.bdew.generators.machine.MachineKind;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** The same balance file is used on both loaders. Read on server startup. */
 public final class GeneratorConfig {
@@ -69,11 +72,31 @@ public final class GeneratorConfig {
         for (var kind : MachineKind.values()) if (kind.controller() && !moduleLimits.containsKey(kind.id())) throw new IllegalArgumentException("Missing module limits: " + kind.id());
         moduleLimits.values().forEach(m -> m.forEach((k,v) -> { if (v == null || v < 0 || v > maxConnectedBlocks) throw new IllegalArgumentException("Invalid module limit: " + k); }));
     }
+    /** Forge wrote the original mod's settings here (config/advgenerators-common.toml). */
+    public static final String LEGACY_CONFIG_FILE = "advgenerators-common.toml";
+    private static final Logger LOG = LoggerFactory.getLogger("advgenerators");
+
+    /** First run after upgrading from the 1.20.1 mod: carry the old balance settings over. */
+    private static void importLegacyConfig(Path legacy) {
+        if (!Files.exists(legacy)) return;
+        try {
+            var imported = LegacyConfig.fromToml(Files.readString(legacy));
+            imported.validate();
+            INSTANCE = imported;
+            LOG.info("Imported settings from the previous version's config {}", legacy.getFileName());
+        } catch (IOException | RuntimeException e) {
+            LOG.warn("Could not import {}, using default settings", legacy.getFileName(), e);
+        }
+    }
     public static void load(Path path) {
         var gson = new GsonBuilder().setPrettyPrinting().create();
         try {
             if (Files.exists(path)) INSTANCE = gson.fromJson(Files.readString(path), GeneratorConfig.class);
-            else { Files.createDirectories(path.getParent()); Files.writeString(path, gson.toJson(INSTANCE)); }
+            else {
+                Files.createDirectories(path.getParent());
+                importLegacyConfig(path.resolveSibling(LEGACY_CONFIG_FILE));
+                Files.writeString(path, gson.toJson(INSTANCE));
+            }
             if (INSTANCE == null) throw new IllegalArgumentException("Empty config");
             INSTANCE.validate();
         } catch (IOException | RuntimeException e) { throw new IllegalStateException("Invalid Advanced Generators config: " + path, e); }

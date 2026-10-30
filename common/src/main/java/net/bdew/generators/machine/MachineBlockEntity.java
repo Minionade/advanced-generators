@@ -2,6 +2,7 @@ package net.bdew.generators.machine;
 
 import net.bdew.generators.ModContent;
 import net.bdew.generators.config.GeneratorConfig;
+import net.bdew.generators.legacy.LegacyBlockEntityData;
 import net.bdew.generators.menu.MachineMenu;
 import net.bdew.generators.platform.TransferPlatform;
 import net.bdew.generators.recipe.MachineRecipe;
@@ -488,7 +489,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public double metric(int metric) {
         return switch(metric) {
             case 1 -> energyCapacity == 0 ? 0 : (double)energy/energyCapacity;
-            case 2,3,4,5 -> buffers[metric-2].capacity == 0 ? 0 : buffers[metric-2].amount/buffers[metric-2].capacity;
+            case 2,3,4,5 -> buffers[metric-2].effectiveCapacity() == 0 ? 0 : buffers[metric-2].amount/buffers[metric-2].effectiveCapacity();
             case 6 -> rpm/GeneratorConfig.INSTANCE.maxRpm;
             case 7 -> heat/(kind() == MachineKind.SYNGAS_CONTROLLER ? GeneratorConfig.INSTANCE.syngasMaxHeat : GeneratorConfig.INSTANCE.exchangerMaxHeat);
             case 8 -> carbon/GeneratorConfig.INSTANCE.syngasCapacity;
@@ -638,7 +639,9 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         tag.putBoolean("lastExchangerInputItem",lastExchangerInputItem); tag.putBoolean("lastExchangerOutputItem",lastExchangerOutputItem);
     }
     private static double finite(CompoundTag tag,String key) { double v = tag.getDouble(key); return Double.isFinite(v) ? Math.max(0,v) : 0; }
-    @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    @Override protected void loadAdditional(CompoundTag saved, HolderLookup.Provider registries) {
+        // Machines saved by the 1.20.1 mod use a different layout; translate them on load.
+        CompoundTag tag = LegacyBlockEntityData.upgrade(saved, kind());
         super.loadAdditional(tag,registries);
         connectedCore = tag.contains("connectedCore", Tag.TAG_LONG) ? BlockPos.of(tag.getLong("connectedCore")) : null;
         energy = Math.max(0,tag.getLong("energy")); heat=finite(tag,"heat"); carbon=finite(tag,"carbon"); burnTime=finite(tag,"burnTime"); rpm=finite(tag,"rpm"); energyFraction=Math.min(.999999,finite(tag,"fraction"));
