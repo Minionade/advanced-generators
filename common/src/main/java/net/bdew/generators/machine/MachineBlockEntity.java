@@ -372,6 +372,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     }
     public void refreshOutputFaces() {
         if (level == null || level.isClientSide || !kind().controller()) return;
+        boolean[] changed = {false};
         var members = members();
         var liveModules = new HashSet<Long>();
         var memberPositions = new HashSet<BlockPos>();
@@ -390,14 +391,20 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                     && facingMatches && (apiPort || TransferPlatform.canOutputOn(module, direction));
                 if (available) {
                     outputConfigs.computeIfAbsent(face, key -> {
+                        changed[0] = true;
                         int side = direction.get3DDataValue();
                         return new OutputConfig(outputMode[side], outputSelection[side], outputLimit[side]);
                     });
-                } else outputConfigs.remove(face);
+                } else if (outputConfigs.remove(face) != null) changed[0] = true;
             }
         }
-        outputConfigs.keySet().removeIf(face -> level.hasChunkAt(face.blockPos()) && !liveModules.contains(face.position()));
-        while (outputConfigs.size() > 6) outputConfigs.remove(outputConfigs.keySet().stream().reduce((a,b) -> b).orElseThrow());
+        changed[0] |= outputConfigs.keySet().removeIf(face -> level.hasChunkAt(face.blockPos()) && !liveModules.contains(face.position()));
+        while (outputConfigs.size() > 6) { outputConfigs.remove(outputConfigs.keySet().stream().reduce((a,b) -> b).orElseThrow()); changed[0] = true; }
+        // Clients draw the output badges and arrows from this list, so they need to hear when it changes.
+        if (changed[0]) {
+            setChanged();
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        }
     }
     private OutputConfig outputConfig(MachineBlockEntity module, Direction direction) {
         var core = module.kind().controller() ? module : module.controller();

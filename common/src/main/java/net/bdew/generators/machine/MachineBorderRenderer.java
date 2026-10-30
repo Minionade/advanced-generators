@@ -3,6 +3,7 @@ package net.bdew.generators.machine;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bdew.generators.Generators;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -41,6 +42,8 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         for (Direction face : Direction.values()) {
             BlockPos outside = pos.relative(face);
             boolean blocked = level.getBlockState(outside).isSolidRender(level, outside);
+            // The machine's own position is opaque and so has no light; light each face from the space it faces.
+            int light = LevelRenderer.getLightColor(level, outside);
 
             Direction top = top(face);
             Direction right = right(face);
@@ -50,28 +53,28 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
                 boolean l = !connects(machine, pos.relative(right.getOpposite()));
                 boolean r = !connects(machine, pos.relative(right));
 
-                if (u) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
-                if (d) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
-                if (l) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, packedLight, packedOverlay);
-                if (r) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, packedLight, packedOverlay);
+                if (u) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 1-EDGE_SIZE, 1, 1, 0, 1-EDGE_SIZE, 1, 1, light, packedOverlay);
+                if (d) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, 1, EDGE_SIZE, 0, 0, 1, EDGE_SIZE, light, packedOverlay);
+                if (l) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, EDGE_SIZE, 1, 0, 0, EDGE_SIZE, 1, light, packedOverlay);
+                if (r) drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 0, 1, 1, 1-EDGE_SIZE, 0, 1, 1, light, packedOverlay);
 
                 if (!u && !r && !connects(machine, pos.relative(top).relative(right)))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, 1-EDGE_SIZE, 1-EDGE_SIZE, 1, 1, light, packedOverlay);
                 if (!u && !l && !connects(machine, pos.relative(top).relative(right.getOpposite())))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, 0, 1-EDGE_SIZE, EDGE_SIZE, 1, light, packedOverlay);
                 if (!d && !r && !connects(machine, pos.relative(top.getOpposite()).relative(right)))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, 1-EDGE_SIZE, 0, 1, EDGE_SIZE, light, packedOverlay);
                 if (!d && !l && !connects(machine, pos.relative(top.getOpposite()).relative(right.getOpposite())))
-                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(EDGE)), face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, packedLight, packedOverlay);
+                    drawRect(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(EDGE)), face, 0, 0, EDGE_SIZE, EDGE_SIZE, 0, 0, EDGE_SIZE, EDGE_SIZE, light, packedOverlay);
             }
 
             // BdLib's model enhancer places the output badge on its connected
             // face and puts a direction arrow on each perpendicular face.
-            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(OUTPUT)), face, 0, outputs[face.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 0, outputs[top.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 1, outputs[right.ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 2, outputs[top.getOpposite().ordinal()], packedLight, packedOverlay);
-            if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCull(ARROW)), face, 3, outputs[right.getOpposite().ordinal()], packedLight, packedOverlay);
+            if (outputs[face.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(OUTPUT)), face, 0, outputs[face.ordinal()], light, packedOverlay);
+            if (!blocked && outputs[top.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 0, outputs[top.ordinal()], light, packedOverlay);
+            if (!blocked && outputs[right.ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 1, outputs[right.ordinal()], light, packedOverlay);
+            if (!blocked && outputs[top.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 2, outputs[top.getOpposite().ordinal()], light, packedOverlay);
+            if (!blocked && outputs[right.getOpposite().ordinal()] >= 0) drawOverlay(stack, buffers.getBuffer(RenderType.entityCutoutNoCullZOffset(ARROW)), face, 3, outputs[right.getOpposite().ordinal()], light, packedOverlay);
         }
     }
 
@@ -132,22 +135,21 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
                                     int rotation, int colorIndex, int light, int overlay) {
         int[][] colors={{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255}};
         int[] color=colors[Math.floorMod(colorIndex,colors.length)];
-        float[][] uv = switch (rotation) {
-            case 1 -> new float[][]{{1,0},{1,1},{0,1},{0,0}};
-            case 2 -> new float[][]{{1,1},{0,1},{0,0},{1,0}};
-            case 3 -> new float[][]{{0,1},{0,0},{1,0},{1,1}};
-            default -> new float[][]{{0,0},{1,0},{1,1},{0,1}};
-        };
-        float[][] positions = {point(face,0,0), point(face,1,0), point(face,1,1), point(face,0,1)};
+        // Corners as seen from outside the face: upper left, lower left, lower right, upper right. The texture is
+        // laid on them upright and then turned by `rotation` quarter turns, like the original's Texture.rotate.
+        // (Image rows run downwards, so the face's own "up" must map to v = 0.)
+        float[][] base = {{0,0},{0,1},{1,1},{1,0}};
+        float[][] uv = new float[4][];
+        for (int i = 0; i < 4; i++) uv[i] = base[(i + rotation) % 4];
+        float[][] positions = {point(face,0,1), point(face,0,0), point(face,1,0), point(face,1,1)};
         var pose = stack.last();
-        float shade = faceShade(face);
         for (int i = 0; i < 4; i++) {
             float[] p = positions[i];
             float x = (p[0] - .5f) * EXPANSION + .5f;
             float y = (p[1] - .5f) * EXPANSION + .5f;
             float z = (p[2] - .5f) * EXPANSION + .5f;
             out.addVertex(pose.pose(), x, y, z)
-                .setColor((int)(color[0] * shade), (int)(color[1] * shade), (int)(color[2] * shade), 255)
+                .setColor(color[0], color[1], color[2], 255) // the original baked these without face shading
                 .setUv(uv[i][0], uv[i][1])
                 .setOverlay(overlay)
                 .setLight(light)
@@ -155,15 +157,17 @@ public final class MachineBorderRenderer implements BlockEntityRenderer<MachineB
         }
     }
 
-    // Match BdLib's cutout quads: vanilla directional shading, without block AO.
+    /**
+     * Vanilla's flat face shading (the original drew these quads on the cutout layer without ambient occlusion).
+     * The entity shader would shade by the vertex normal as well, so the quads use a neutral up normal and
+     * carry the face shade in their colour instead, which keeps them exactly as bright as the block's own faces.
+     */
     private static float faceShade(Direction face) {
-        // Keep the connected frame visibly gray. The previous 0.5–0.8 multipliers
-        // turned the gray texture nearly black on bottom and side faces.
         return switch (face) {
-            case DOWN -> 0.9f;
+            case DOWN -> 0.5f;
             case UP -> 1.0f;
-            case NORTH, SOUTH -> 0.95f;
-            case WEST, EAST -> 0.92f;
+            case NORTH, SOUTH -> 0.8f;
+            case WEST, EAST -> 0.6f;
         };
     }
 
