@@ -11,7 +11,7 @@ Original mod by bdew: [Advanced Generators](https://www.curseforge.com/minecraft
 
 ## Upgrading from the 1.20.1 version
 
-Worlds and settings from the original Forge 1.20.1 mod carry over (tested on NeoForge):
+Worlds and settings from the original Forge 1.20.1 mod carry over (checked on NeoForge against a world written by the real 1.20.1 mod):
 
 - **Machines** saved by the 1.20.1 mod (controllers and modules, including contents, connections, output settings,
   control and sensor modules) are converted when their chunk is first loaded. Block and fluid names are unchanged.

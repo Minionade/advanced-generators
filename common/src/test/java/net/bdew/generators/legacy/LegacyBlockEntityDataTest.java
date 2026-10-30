@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class LegacyBlockEntityDataTest {
     private static CompoundTag power(float stored) { var t = new CompoundTag(); t.putFloat("stored", stored); return t; }
     private static CompoundTag fluid(String name, int amount) { var t = new CompoundTag(); t.putString("FluidName", name); t.putInt("Amount", amount); return t; }
-    private static CompoundTag emptyTank() { var t = new CompoundTag(); t.putString("Empty", ""); return t; }
+    /** What the original really saves for an empty tank (checked on a 1.20.1 server). */
+    private static CompoundTag emptyTank() { var t = new CompoundTag(); t.putString("FluidName", "minecraft:empty"); t.putInt("Amount", 0); return t; }
     private static CompoundTag pos(int x, int y, int z) { var t = new CompoundTag(); t.putInt("x", x); t.putInt("y", y); t.putInt("z", z); return t; }
     private static CompoundTag fluidResource(String fluid, double amount) {
         var res = new CompoundTag(); res.putString("kind", "fluid"); res.putString("fluid", fluid); res.putDouble("amount", amount);
