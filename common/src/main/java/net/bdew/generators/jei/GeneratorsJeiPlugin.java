@@ -41,7 +41,9 @@ public final class GeneratorsJeiPlugin implements IModPlugin {
     }
     @Override public void registerRecipes(IRecipeRegistration registration) {
         Map<String, List<MachineRecipe>> recipes = loadRecipes();
-        registration.addRecipes(FUEL.getRecipeType(), recipes.get("liquid_fuel"));
+        List<MachineRecipe> fuels = recipes.get("liquid_fuel");
+        fuels.addAll(externalFuels(fuels));
+        registration.addRecipes(FUEL.getRecipeType(), fuels);
         registration.addRecipes(SYNGAS.getRecipeType(), recipes.get("carbon_source"));
         registration.addRecipes(UPGRADE.getRecipeType(), recipes.get("upgrade_kit"));
         registration.addRecipes(HEATING.getRecipeType(), recipes.get("exchanger_heating"));
@@ -62,6 +64,23 @@ public final class GeneratorsJeiPlugin implements IModPlugin {
         registration.addRecipeCatalyst(item(MachineKind.EXCHANGER_CONTROLLER), COOLING.getRecipeType());
     }
 
+    /** Fuels other mods define (BuildCraft, Modern Industrialization) have no recipe file; list them as well. */
+    private static List<MachineRecipe> externalFuels(List<MachineRecipe> known) {
+        var result = new ArrayList<MachineRecipe>();
+        for (var fluid : net.minecraft.core.registries.BuiltInRegistries.FLUID) {
+            if (fluid == net.minecraft.world.level.material.Fluids.EMPTY || !fluid.isSource(fluid.defaultFluidState())) continue;
+            if (known.stream().anyMatch(r -> r.matchesFluid(fluid))) continue;
+            double fePerMb = net.bdew.generators.platform.TransferPlatform.externalFuelFePerMb(fluid);
+            if (fePerMb <= 0) continue;
+            JsonObject json = new JsonObject();
+            JsonObject fuel = new JsonObject();
+            fuel.addProperty("fluid", net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid).toString());
+            json.add("fuel", fuel);
+            json.addProperty("fePerMb", fePerMb);
+            result.add(new MachineRecipe("liquid_fuel", json));
+        }
+        return result;
+    }
     private static ItemStack item(MachineKind kind) { return new ItemStack(ModContent.MACHINES.get(kind).get()); }
     private static Map<String, List<MachineRecipe>> loadRecipes() {
         var result = new LinkedHashMap<String, List<MachineRecipe>>();

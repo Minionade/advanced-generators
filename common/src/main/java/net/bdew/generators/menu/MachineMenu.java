@@ -143,6 +143,14 @@ public final class MachineMenu extends AbstractContainerMenu {
     public int outputSelection(int row) { return outputValue(row,3); }
     public int outputLimitIndex(int row) { return outputValue(row,4); }
     public double outputAverage(int row) { return outputValue(row,5)/100.0; }
+    /** Key of the unit in the bdlib.unit.* translations. */
+    public String outputUnitKey(int row) {
+        var kind=outputKind(row);
+        if(kind==null)return "fe";
+        if(kind.isEuOutput())return "eu";
+        if(kind.isMjOutput())return "mj";
+        return kind==MachineKind.FLUID_OUTPUT_SELECT?"mb":"fe";
+    }
     public String outputUnit(int row) {
         var kind=outputKind(row);
         if(kind==null)return "/t";
@@ -222,7 +230,6 @@ public final class MachineMenu extends AbstractContainerMenu {
         if (machine.kind().controller()) {
             if (button>=0 && button<machine.outputEntries().size()) machine.setOutputMode(button,(machine.outputEntries().get(button).config().mode+1)%4);
             else if (button>=6 && button<12) machine.cycleOutputSelection(button-6);
-            else if (button>=12 && button<18) machine.cycleOutputLimit(button-12);
             else if (button==18) dumpBuffers();
             else return false;
         } else if (machine.kind()==MachineKind.CONTROL) {

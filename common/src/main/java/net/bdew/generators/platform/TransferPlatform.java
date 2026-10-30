@@ -16,6 +16,10 @@ public final class TransferPlatform {
         Object itemStorage(MachineBlockEntity machine, Direction side);
         Object energyStorage(MachineBlockEntity machine, Direction side);
         boolean canOutputOn(MachineBlockEntity machine, Direction side);
+        /** FE per mB the fuel turbine gets from a fluid another mod defines as a fuel (0 if none). */
+        double externalFuelFePerMb(net.minecraft.world.level.material.Fluid fluid);
+        /** Tells neighbours that cache this machine's capabilities (cables, pipes) to look again. */
+        void capabilitiesChanged(MachineBlockEntity machine);
         MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state);
     }
 
@@ -39,5 +43,7 @@ public final class TransferPlatform {
     public static Object itemStorage(MachineBlockEntity machine, Direction side) { return provider().itemStorage(machine, side); }
     public static Object energyStorage(MachineBlockEntity machine, Direction side) { return provider().energyStorage(machine, side); }
     public static boolean canOutputOn(MachineBlockEntity machine, Direction side) { return provider().canOutputOn(machine, side); }
+    public static double externalFuelFePerMb(net.minecraft.world.level.material.Fluid fluid) { return provider().externalFuelFePerMb(fluid); }
+    public static void capabilitiesChanged(MachineBlockEntity machine) { provider().capabilitiesChanged(machine); }
     public static MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state) { return provider().createMachineBlockEntity(pos, state); }
 }

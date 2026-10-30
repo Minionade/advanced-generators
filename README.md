@@ -25,6 +25,4 @@ Back up your world before upgrading, as with any version jump.
 - **Fabric and NeoForge** are both supported. On Fabric only the EU output is offered (via Tech Reborn Energy);
   NeoForge has the FE Generator, and EU outputs through Modern Industrialization.
 - **MJ output** for BuildCraft (when BuildCraft is installed).
-- **Per-face FE output limit**: each energy output face has a rate limit you can cycle in the output screen
-  (default: unlimited). This is new in this edition.
 - IC2 Classic support is not included for now.

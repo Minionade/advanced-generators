@@ -18,6 +18,8 @@ public final class TransferPlatformImpl {
             public Object itemStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.items(machine,side);}
             public Object energyStorage(MachineBlockEntity machine,Direction side){return FabricTransfers.energy(machine,side);}
             public boolean canOutputOn(MachineBlockEntity machine,Direction side){return FabricTransfers.canOutputOn(machine,side);}
+            public double externalFuelFePerMb(net.minecraft.world.level.material.Fluid fluid){return 0;}
+            public void capabilitiesChanged(MachineBlockEntity machine){}
             public MachineBlockEntity createMachineBlockEntity(BlockPos pos,BlockState state){return new MachineBlockEntity(pos,state);}
         };
     }

@@ -25,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import java.util.*;
 
@@ -178,13 +179,31 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 machine.setChanged();
             }
             machine.clampEnergyToCapacity();
-        } else if (machine.kind().output() && network.error() == 0) TransferPlatform.push(machine);
+        } else if (machine.kind().output()) {
+            machine.watchCapabilities();
+            if (network.error() == 0) TransferPlatform.push(machine);
+        }
         if (machine.kind() == MachineKind.SENSOR || machine.kind() == MachineKind.CONTROL) {
             boolean powered = machine.kind() == MachineKind.CONTROL ? level.hasNeighborSignal(pos) : machine.sensor();
             if (state.getValue(BlockStateProperties.POWERED) != powered) {
                 level.setBlock(pos, state.setValue(BlockStateProperties.POWERED, powered), 3);
                 level.updateNeighborsAt(pos, state.getBlock());
             }
+        }
+    }
+    private int capabilitySignature = -1;
+    /**
+     * Cables and pipes cache what a module exposes, and a module exposes nothing until it has a controller and its
+     * output is enabled. Whenever that changes (connecting, loading, a redstone mode edit) they must look again.
+     */
+    private void watchCapabilities() {
+        if (level == null || level.isClientSide || level.getGameTime() % 5 != 0) return;
+        int signature = controller() == null ? 0 : 1;
+        if (signature == 1) for (Direction side : Direction.values()) if (outputEnabled(side)) signature |= 2 << side.get3DDataValue();
+        if (signature != capabilitySignature) {
+            capabilitySignature = signature;
+            TransferPlatform.capabilitiesChanged(this);
+            level.updateNeighborsAt(worldPosition, getBlockState().getBlock()); // cables re-check their connections on this
         }
     }
     private void sampleRates() {
@@ -254,7 +273,12 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     }
     private double fuelValue() {
         if (buffers[0].empty()) return 0;
-        return recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(buffers[0].fluid())).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
+        return fuelFePerMb(buffers[0].fluid());
+    }
+    /** Fuel recipes first, then what other mods (BuildCraft, Modern Industrialization) define as fuels. */
+    public double fuelFePerMb(Fluid fluid) {
+        double fromRecipe = recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(fluid)).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
+        return fromRecipe > 0 ? fromRecipe : TransferPlatform.externalFuelFePerMb(fluid);
     }
     private void addEnergy(double quantity) {
         double room = Math.max(0, energyCapacity - energy - energyFraction);
@@ -391,7 +415,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 BlockPos target = module.getBlockPos().relative(direction);
                 if (!level.hasChunkAt(target)) continue;
                 OutputFace face = new OutputFace(module.getBlockPos(), direction);
-                boolean apiPort = module.kind().isEuOutput() || module.kind().isMjOutput();
+                // EU ports are not looked up on neighbours: cables find them through the facing side. MJ needs a receiver.
+                boolean apiPort = module.kind().isEuOutput();
                 boolean facingMatches = !module.kind().hasFacing()
                     || module.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) == direction;
                 boolean available = !memberPositions.contains(target) && !target.equals(worldPosition)
@@ -485,7 +510,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public boolean accepts(int slot, boolean item, ResourceLocation id, DataComponentPatch patch) {
         if (item && kind() != MachineKind.EXCHANGER_CONTROLLER) return false;
         return switch (kind()) {
-            case FUEL_TURBINE_CONTROLLER -> !item && slot == 0 && recipes("liquid_fuel").stream().anyMatch(r -> r.value().matchesFluid(BuiltInRegistries.FLUID.get(id)));
+            case FUEL_TURBINE_CONTROLLER -> !item && slot == 0 && fuelFePerMb(BuiltInRegistries.FLUID.get(id)) > 0;
             case STEAM_TURBINE_CONTROLLER -> !item && slot == 0 && steam(id);
             case SYNGAS_CONTROLLER -> !item && (slot == 0 && BuiltInRegistries.FLUID.get(id) == Fluids.WATER || slot == 1 && steam(id));
             case EXCHANGER_CONTROLLER -> slot < 2 && exchangerRecipe(ExchangerRoles.inputType(slot),item,id,patch) != null;

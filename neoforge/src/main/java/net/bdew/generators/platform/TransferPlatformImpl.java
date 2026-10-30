@@ -35,6 +35,8 @@ public final class TransferPlatformImpl {
             public Object itemStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.items(machine, side); }
             public Object energyStorage(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.energy(machine, side); }
             public boolean canOutputOn(MachineBlockEntity machine, Direction side) { return TransferPlatformImpl.canOutputOn(machine, side); }
+            public double externalFuelFePerMb(net.minecraft.world.level.material.Fluid fluid) { return ExternalFuels.fePerMb(fluid); }
+            public void capabilitiesChanged(MachineBlockEntity machine) { if (machine.getLevel() != null) machine.getLevel().invalidateCapabilities(machine.getBlockPos()); }
             public MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state) {
                 return ModList.get().isLoaded("buildcraftlib")
                     ? BuildCraftPlatform.createMachineBlockEntity(pos, state)

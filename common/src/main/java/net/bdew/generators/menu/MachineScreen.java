@@ -42,7 +42,6 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             if(inRow&&mouseX>=panelLeft+82&&mouseX<panelLeft+98) {
                 var outputKind=menu.outputKind(row);
                 if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&outputKind==MachineKind.FLUID_OUTPUT_SELECT&&(button==0||button==1)) clickMenuButton(6+row);
-                else if(outputKind!=null&&outputKind.isEnergyOutput()&&button==0) clickMenuButton(12+row);
                 return true;
             }
             if(mouseX<panelLeft||mouseX>=panelLeft+124||mouseY<panelTop||mouseY>=panelTop+138) {
@@ -96,14 +95,11 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             }
             boolean power=outputKind!=null&&(outputKind.isEnergyOutput()||outputKind.isMjOutput());
             boolean fluid=outputKind==MachineKind.FLUID_OUTPUT_SELECT;
-            if(power) g.drawString(font,GuiFormat.perTick(menu.outputAverage(row),menu.outputUnit(row)),x+28,rowY+5,0xff404040,false);
+            if(power) g.drawString(font,GuiFormat.perTick(menu.outputAverage(row),menu.outputUnitKey(row)),x+28,rowY+5,0xff404040,false);
             else if(fluid) g.drawString(font,GuiFormat.fluidPerTick(menu.outputAverage(row)),x+28,rowY+5,0xff404040,false);
             if(menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER&&fluid) {
                 // which of the exchanger's fluids this output takes
                 drawAtlasButton(g,x+82,rowY+1,mouseX,mouseY,20,SLOT_ICONS[Math.floorMod(menu.outputSelection(row),3)],35);
-            } else if(outputKind!=null&&outputKind.isEnergyOutput()) {
-                // per-face FE output limit (an addition of this edition)
-                drawTextButton(g,x+82,rowY+1,mouseX,mouseY,switch(menu.outputLimitIndex(row)){case 0->"8k";case 1->"32k";case 2->"128k";default->"Max";});
             }
             int mode=menu.outputMode(row);
             int iconU=switch(mode){case 1->37;case 2->21;case 3->69;default->53;};
@@ -396,10 +392,8 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
                 g.renderTooltip(font,Component.literal(menu.outputFullLabel(row)),mx,my);
             else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+71&&mx<panelLeft+93)
                 g.renderTooltip(font,Component.literal(format(menu.outputAverage(row))+" "+menu.outputUnit(row)),mx,my);
-            else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+94&&mx<panelLeft+117) {
-                String key=menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER?"advgenerators.gui.output.selection":"advgenerators.gui.output.limit";
-                g.renderTooltip(font,Component.translatable(key),mx,my);
-            }
+            else if(row>=0&&row<menu.outputCount()&&mx>=panelLeft+94&&mx<panelLeft+117&&menu.machine().kind()==MachineKind.EXCHANGER_CONTROLLER)
+                g.renderTooltip(font,Component.translatable("advgenerators.gui.output.selection"),mx,my);
             return;
         }
         renderBackground(g,mx,my,delta); super.render(g,mx,my,delta);

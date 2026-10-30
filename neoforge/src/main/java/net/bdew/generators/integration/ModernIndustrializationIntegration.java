@@ -21,34 +21,41 @@ public final class ModernIndustrializationIntegration {
             ModernIndustrializationIntegration::storage);
     }
 
+    /**
+     * The port exists whenever this is an EU output looking at that side, whether or not it has a controller or is
+     * enabled right now. MI cables only ever drop connections when they re-check (it never adds them back), and they
+     * re-check when a chunk loads, before the module has found its controller: judging on live state there would
+     * cut the cable for good. Only what gets handed out depends on live state.
+     */
     private static MIEnergyStorage storage(MachineBlockEntity module, Direction side) {
         if (side == null || !module.kind().isEuOutput()) return null;
         if (module.getBlockState().getValue(BlockStateProperties.FACING) != side) return null;
-        MachineBlockEntity core = module.controller();
-        if (core == null || !module.outputEnabled(side)) return null;
 
         return new MIEnergyStorage.NoInsert() {
             private long rateEu() {
-                return Math.min(module.kind().euOutputRate(),
-                    Math.max(0, core.outputLimit(module, side)) / FE_PER_EU);
+                MachineBlockEntity core = module.controller();
+                if (core == null || !module.outputEnabled(side)) return 0;
+                return Math.min(module.kind().euOutputRate(), Math.max(0, core.outputLimit(module, side)) / FE_PER_EU);
             }
 
             @Override
             public boolean canConnect(CableTier tier) {
-                return rateEu() > 0 && rateEu() <= tier.eu;
+                return module.kind().euOutputRate() <= tier.eu;
             }
 
             @Override
             public long extract(long maximum, boolean simulate) {
-                if (maximum <= 0 || !module.outputEnabled(side)) return 0;
-                long extractedEu = Math.min(maximum, Math.min(rateEu(), core.energy / FE_PER_EU));
+                MachineBlockEntity core = module.controller();
+                long rate = rateEu();
+                if (maximum <= 0 || core == null || rate <= 0) return 0;
+                long extractedEu = Math.min(maximum, Math.min(rate, core.energy / FE_PER_EU));
                 if (!simulate && extractedEu > 0) { core.extractEnergy(extractedEu * FE_PER_EU, false); core.recordOutput(module, side, extractedEu); }
                 return extractedEu;
             }
 
-            @Override public long getAmount() { return core.energy / FE_PER_EU; }
-            @Override public long getCapacity() { return core.energyCapacity / FE_PER_EU; }
-            @Override public boolean canExtract() { return module.outputEnabled(side) && rateEu() > 0; }
+            @Override public long getAmount() { MachineBlockEntity core = module.controller(); return core == null ? 0 : core.energy / FE_PER_EU; }
+            @Override public long getCapacity() { MachineBlockEntity core = module.controller(); return core == null ? 0 : core.energyCapacity / FE_PER_EU; }
+            @Override public boolean canExtract() { return true; }
         };
     }
 }
