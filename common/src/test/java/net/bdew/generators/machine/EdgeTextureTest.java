@@ -21,7 +21,7 @@ class EdgeTextureTest {
             assertEquals(72, (argb >> 16) & 0xff);
             assertEquals(81, (argb >> 8) & 0xff);
             assertEquals(84, argb & 0xff);
-            assertEquals(0, image.getRGB(16, 16) >>> 24, "the middle is transparent");
+            assertEquals(0, image.getRGB(image.getWidth() / 2, image.getHeight() / 2) >>> 24, "the middle is transparent");
         }
     }
 }
