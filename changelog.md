@@ -4,10 +4,12 @@
 * Wrench support: turns sensors and EU outputs, and forces output faces on the other output modules (also read from 1.20.1 saves)
 * Right clicking an unconnected module says so in chat; control and sensor modules only open when connected
 * Right click steps backwards through control actions and sensor choices; Esc in the output screen goes back to the machine screen
-* Sensors give a strong redstone signal like the original; only the fluid input takes buckets
+* Sensors give a strong redstone signal like the original; the fluid input and output modules take buckets
+* EU per FE is a setting again (`euPerFe`, 0.25, the original's IC2 ratio) and applies to every EU output; a fuel value of 0 in `fuelValues` turns that fuel off
 * New: Mekanism Joules Emitter, Electrodynamics Joules Emitter, Create Kinetic Converter
 * New: IC2: Nostalgia EU outputs, IC2 fuels and the IC2 upgrade recipes are back
 * New: 48 more fuels (Ad Astra, Electrodynamics, EnderIO, Forestry, IC2, Immersive Engineering and Petroleum, TFMG) and the `fuelMultiplier` / `fuelValues` settings
+* Fabric: fixed a server crash when an EU output pushed energy into a Tech Reborn machine; the Tech Reborn wrench now works on the machine blocks
 * Removed the Singularity Iteration integration and all Photoshop source files from the jar
 
 ### 2.0.2

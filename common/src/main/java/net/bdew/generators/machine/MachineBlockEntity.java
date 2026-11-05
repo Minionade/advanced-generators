@@ -295,8 +295,9 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public double fuelFePerMb(Fluid fluid) {
         var config = GeneratorConfig.INSTANCE;
         var key = BuiltInRegistries.FLUID.getKey(fluid);
-        double value = FuelOverrides.find(config.fuelOverrides(), key, tag -> fluid.is(TagKey.create(Registries.FLUID, tag))).orElse(0);
-        if (value <= 0) value = recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(fluid)).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
+        var override = FuelOverrides.find(config.fuelOverrides(), key, tag -> fluid.is(TagKey.create(Registries.FLUID, tag)));
+        if (override.isPresent()) return override.getAsDouble() * config.fuelMultiplier;
+        double value = recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(fluid)).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
         if (value <= 0) value = TransferPlatform.externalFuelFePerMb(fluid);
         return value * config.fuelMultiplier;
     }

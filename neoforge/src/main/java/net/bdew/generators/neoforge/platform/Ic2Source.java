@@ -2,6 +2,7 @@ package net.bdew.generators.neoforge.platform;
 
 import ic2.api.energy.EnergyNet;
 import ic2.api.energy.tile.IEnergyTile;
+import net.bdew.generators.config.GeneratorConfig;
 import net.bdew.generators.machine.MachineBlockEntity;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -13,8 +14,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
  * classes only forward here, so the logic exists once.
  */
 final class Ic2Source {
-    /** Same rate as the other EU outputs: one EU is worth four FE. */
-    private static final double FE_PER_EU = 4;
 
     private Ic2Source() {}
 
@@ -38,14 +37,14 @@ final class Ic2Source {
         Direction side = facing(module);
         MachineBlockEntity core = module.controller();
         if (core == null || !module.outputEnabled(side)) return 0;
-        double limitEu = Math.max(0, core.outputLimit(module, side)) / FE_PER_EU;
-        return Math.max(0, Math.min(module.kind().euOutputRate(), Math.min(limitEu, core.energy / FE_PER_EU)));
+        double limitEu = Math.max(0, core.outputLimit(module, side)) / GeneratorConfig.fePerEu();
+        return Math.max(0, Math.min(module.kind().euOutputRate(), Math.min(limitEu, core.energy / GeneratorConfig.fePerEu())));
     }
 
     static void draw(MachineBlockEntity module, double amountEu) {
         MachineBlockEntity core = module.controller();
         if (core == null || amountEu <= 0) return;
-        core.extractEnergy((long) Math.ceil(amountEu * FE_PER_EU), false);
+        core.extractEnergy((long) Math.ceil(amountEu * GeneratorConfig.fePerEu()), false);
         core.recordOutput(module, facing(module), amountEu);
     }
 

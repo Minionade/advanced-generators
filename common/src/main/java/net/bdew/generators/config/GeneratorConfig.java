@@ -26,6 +26,10 @@ public final class GeneratorConfig {
     public double syngasWorkHeat = 150, syngasMaxHeat = 200, carbonPerSyngas = 50, steamPerSyngas = 10, waterSteamRatio = 3;
     public double mixingThroughput = 1, heatingThroughput = 50, chamberHeating = .1, chamberLoss = .02, carbonPerHeat = 20;
     public double exchangerMaxHeat = 1000, exchangerStartHeat = 150, exchangerDecay = .05, exchangerTransfer = 16;
+    /** EU per FE for every EU output (IC2, Modern Industrialization, Tech Reborn); the original's IC2 "Ratio". */
+    public double euPerFe = 0.25;
+    /** FE one EU costs. */
+    public static double fePerEu() { return 1 / INSTANCE.euPerFe; }
     /** Mekanism Joules per FE (Mekanism's own default conversion is 1 FE = 2.5 J). */
     public double joulesPerFe = 2.5;
     /** Electrodynamics Joules per FE, and the voltage it is asked for (clamped to what the receiver accepts). */

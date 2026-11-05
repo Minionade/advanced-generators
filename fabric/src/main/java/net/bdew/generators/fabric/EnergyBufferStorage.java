@@ -8,18 +8,17 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant;
 import team.reborn.energy.api.EnergyStorage;
 
 final class EnergyBufferStorage extends SnapshotParticipant<Long> implements EnergyStorage {
-    private static final long FE_PER_EU=4;
     private final MachineBlockEntity controller, module; private final Direction side; private final MachineKind outputKind; private long value, pendingOutput;
     EnergyBufferStorage(MachineBlockEntity controller,MachineBlockEntity module,Direction side,MachineKind outputKind){this.controller=controller;this.module=module;this.side=side;this.outputKind=outputKind;value=controller.energy;}
     @Override public long insert(long max,TransactionContext tx){return 0;}
     @Override public long extract(long max,TransactionContext tx){
         if(max<=0||!module.outputEnabled(side))return 0;
         if(outputKind.isEuOutput()) {
-            long limitEu=Math.min(outputKind.euOutputRate(),Math.max(0,controller.outputLimit(module,side))/FE_PER_EU);
-            long movedEu=Math.min(Math.min(max,limitEu),Math.max(0,Math.min(controller.energy,value))/FE_PER_EU);
+            long limitEu=Math.min(outputKind.euOutputRate(),(long)(Math.max(0,controller.outputLimit(module,side))/net.bdew.generators.config.GeneratorConfig.fePerEu()));
+            long movedEu=Math.min(Math.min(max,limitEu),(long)(Math.max(0,Math.min(controller.energy,value))/net.bdew.generators.config.GeneratorConfig.fePerEu()));
             if(movedEu<=0)return 0;
             updateSnapshots(tx);
-            value-=movedEu*FE_PER_EU;
+            value-=(long)Math.ceil(movedEu*net.bdew.generators.config.GeneratorConfig.fePerEu());
             pendingOutput+=movedEu;
             return movedEu;
         }
@@ -30,8 +29,8 @@ final class EnergyBufferStorage extends SnapshotParticipant<Long> implements Ene
         pendingOutput+=moved;
         return moved;
     }
-    @Override public long getAmount(){return outputKind.isEuOutput()?value/FE_PER_EU:value;}
-    @Override public long getCapacity(){return outputKind.isEuOutput()?controller.energyCapacity/FE_PER_EU:controller.energyCapacity;}
+    @Override public long getAmount(){return outputKind.isEuOutput()?(long)(value/net.bdew.generators.config.GeneratorConfig.fePerEu()):value;}
+    @Override public long getCapacity(){return outputKind.isEuOutput()?(long)(controller.energyCapacity/net.bdew.generators.config.GeneratorConfig.fePerEu()):controller.energyCapacity;}
     @Override public boolean supportsExtraction(){return module.outputEnabled(side)&&(!outputKind.isEuOutput()||outputKind.euOutputRate()>0);}
     @Override public boolean supportsInsertion(){return false;}
     @Override protected Long createSnapshot(){return value;}

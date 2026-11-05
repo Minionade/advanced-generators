@@ -28,6 +28,16 @@ class FuelOverridesTest {
         assertTrue(FuelOverrides.find(entries, id("minecraft:water"), t -> false).isEmpty());
     }
 
+    @Test void zeroTurnsAFuelOff() {
+        var entries = FuelOverrides.parse(List.of("minecraft:lava=0"), new ArrayList<>());
+        assertEquals(0, FuelOverrides.find(entries, id("minecraft:lava"), t -> false).getAsDouble());
+    }
+
+    @Test void euRatioIsImportedFromTheOriginalConfig() {
+        var config = LegacyConfig.fromToml("[Integration.IC2C]\nRatio = 0.5\n");
+        assertEquals(0.5, config.euPerFe);
+    }
+
     @Test void reforgedConfigSectionIsImported() {
         var config = LegacyConfig.fromToml("[Fuels]\nMultiplier = 2.5\nFuelValues = [\"minecraft:lava=200\"]\n");
         assertEquals(2.5, config.fuelMultiplier);

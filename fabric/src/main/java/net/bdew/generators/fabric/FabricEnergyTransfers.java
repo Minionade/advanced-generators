@@ -11,7 +11,6 @@ import team.reborn.energy.api.EnergyStorage;
 
 /** Team Reborn Energy API adapter, loaded only when the API mod is installed. */
 final class FabricEnergyTransfers implements FabricTransfers.EnergyIntegration {
-    private static final long FE_PER_EU=4;
 
     @Override public void register(BlockEntityType<MachineBlockEntity> type) {
         EnergyStorage.SIDED.registerForBlockEntity((machine,side)->(EnergyStorage)storage(machine,side),type);
@@ -43,12 +42,23 @@ final class FabricEnergyTransfers implements FabricTransfers.EnergyIntegration {
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
             var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
             if(module.kind().isEuOutput()) {
-                long movedEu=Math.min(module.kind().euOutputRate(),Math.max(0,core.outputLimit(module,side))/FE_PER_EU);
-                movedEu=Math.min(movedEu,core.energy/FE_PER_EU);
-                if(movedEu>0){long accepted=destination.insert(movedEu,null);if(accepted>0){core.extractEnergy(accepted*FE_PER_EU,false);core.recordOutput(module,side,accepted);}}
+                long movedEu=Math.min(module.kind().euOutputRate(),(long)(Math.max(0,core.outputLimit(module,side))/net.bdew.generators.config.GeneratorConfig.fePerEu()));
+                movedEu=Math.min(movedEu,(long)(core.energy/net.bdew.generators.config.GeneratorConfig.fePerEu()));
+                if(movedEu>0){
+                    // the Transfer API needs a real transaction: commit it only when something was taken
+                    try(var tx=net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()){
+                        long accepted=destination.insert(movedEu,tx);
+                        if(accepted>0){tx.commit();core.extractEnergy((long)Math.ceil(accepted*net.bdew.generators.config.GeneratorConfig.fePerEu()),false);core.recordOutput(module,side,accepted);}
+                    }
+                }
             } else {
                 long moved=core.extractEnergy(Math.min(core.outputLimit(module,side),Integer.MAX_VALUE),true);
-                if(moved>0){long accepted=destination.insert(moved,null);if(accepted>0){core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}}
+                if(moved>0){
+                    try(var tx=net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()){
+                        long accepted=destination.insert(moved,tx);
+                        if(accepted>0){tx.commit();core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}
+                    }
+                }
             }
         }
     }

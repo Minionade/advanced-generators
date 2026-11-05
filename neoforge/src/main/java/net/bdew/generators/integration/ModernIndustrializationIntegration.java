@@ -4,6 +4,7 @@ import aztech.modern_industrialization.api.energy.CableTier;
 import aztech.modern_industrialization.api.energy.EnergyApi;
 import aztech.modern_industrialization.api.energy.MIEnergyStorage;
 import net.bdew.generators.ModContent;
+import net.bdew.generators.config.GeneratorConfig;
 import net.bdew.generators.machine.MachineBlockEntity;
 import net.bdew.generators.machine.MachineKind;
 import net.minecraft.core.Direction;
@@ -12,7 +13,6 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 
 /** Exposes the generator's EU output modules to Modern Industrialization cables. */
 public final class ModernIndustrializationIntegration {
-    private static final long FE_PER_EU = 4;
 
     private ModernIndustrializationIntegration() {}
 
@@ -35,7 +35,7 @@ public final class ModernIndustrializationIntegration {
             private long rateEu() {
                 MachineBlockEntity core = module.controller();
                 if (core == null || !module.outputEnabled(side)) return 0;
-                return Math.min(module.kind().euOutputRate(), Math.max(0, core.outputLimit(module, side)) / FE_PER_EU);
+                return Math.min(module.kind().euOutputRate(), (long) (Math.max(0, core.outputLimit(module, side)) / GeneratorConfig.fePerEu()));
             }
 
             @Override
@@ -48,13 +48,13 @@ public final class ModernIndustrializationIntegration {
                 MachineBlockEntity core = module.controller();
                 long rate = rateEu();
                 if (maximum <= 0 || core == null || rate <= 0) return 0;
-                long extractedEu = Math.min(maximum, Math.min(rate, core.energy / FE_PER_EU));
-                if (!simulate && extractedEu > 0) { core.extractEnergy(extractedEu * FE_PER_EU, false); core.recordOutput(module, side, extractedEu); }
+                long extractedEu = Math.min(maximum, Math.min(rate, (long) (core.energy / GeneratorConfig.fePerEu())));
+                if (!simulate && extractedEu > 0) { core.extractEnergy((long) Math.ceil(extractedEu * GeneratorConfig.fePerEu()), false); core.recordOutput(module, side, extractedEu); }
                 return extractedEu;
             }
 
-            @Override public long getAmount() { MachineBlockEntity core = module.controller(); return core == null ? 0 : core.energy / FE_PER_EU; }
-            @Override public long getCapacity() { MachineBlockEntity core = module.controller(); return core == null ? 0 : core.energyCapacity / FE_PER_EU; }
+            @Override public long getAmount() { MachineBlockEntity core = module.controller(); return core == null ? 0 : (long) (core.energy / GeneratorConfig.fePerEu()); }
+            @Override public long getCapacity() { MachineBlockEntity core = module.controller(); return core == null ? 0 : (long) (core.energyCapacity / GeneratorConfig.fePerEu()); }
             @Override public boolean canExtract() { return true; }
         };
     }

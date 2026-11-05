@@ -101,8 +101,8 @@ public class MachineBlock extends BaseEntityBlock {
     @Override protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof UpgradeKitItem) return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (isWrench(stack) && wrench(state, level, pos, hit)) return ItemInteractionResult.sidedSuccess(level.isClientSide);
-        // only the fluid input module takes buckets and other fluid containers
-        if (kind == MachineKind.FLUID_INPUT && level.getBlockEntity(pos) instanceof MachineBlockEntity machine && TransferPlatform.interact(machine, player, hand, hit.getDirection()))
+        // the fluid input and fluid output modules take buckets and other fluid containers, as in the original
+        if ((kind == MachineKind.FLUID_INPUT || kind == MachineKind.FLUID_OUTPUT_SELECT) && level.getBlockEntity(pos) instanceof MachineBlockEntity machine && TransferPlatform.interact(machine, player, hand, hit.getDirection()))
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }

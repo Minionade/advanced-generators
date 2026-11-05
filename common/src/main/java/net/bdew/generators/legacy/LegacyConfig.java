@@ -86,6 +86,8 @@ public final class LegacyConfig {
         for (int tier = 0; tier < 3; tier++)
             c.capacitorCapacity[tier] = (long) num(table(capacitors, "Tier" + (tier + 1)), "Capacity", c.capacitorCapacity[tier]);
 
+        // [Integration.IC2C] Ratio: EU per FE
+        c.euPerFe = num(table(table(root, "Integration"), "IC2C"), "Ratio", c.euPerFe);
         // The Reforged edition's [Fuels] section
         var fuels = table(root, "Fuels");
         c.fuelMultiplier = num(fuels, "Multiplier", c.fuelMultiplier);

@@ -9,7 +9,7 @@ import java.util.function.Predicate;
 
 /**
  * The {@code fuelValues} setting: {@code "fluid_id=fe_per_mb"} or {@code "#fluid_tag=fe_per_mb"}. The first entry that
- * matches a fluid wins, and entries take precedence over fuel recipes.
+ * matches a fluid wins, and entries take precedence over fuel recipes. A value of 0 turns that fuel off.
  */
 public final class FuelOverrides {
     private FuelOverrides() {}
@@ -28,7 +28,7 @@ public final class FuelOverrides {
                 boolean tag = key.startsWith("#");
                 ResourceLocation id = ResourceLocation.parse(tag ? key.substring(1) : key);
                 double value = Double.parseDouble(line.substring(split + 1).trim());
-                if (!Double.isFinite(value) || value <= 0) throw new IllegalArgumentException("value must be positive");
+                if (!Double.isFinite(value) || value < 0) throw new IllegalArgumentException("value must not be negative");
                 result.add(new Entry(id, tag, value));
             } catch (RuntimeException e) {
                 errors.add("\"" + line + "\": " + e.getMessage());

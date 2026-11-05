@@ -43,9 +43,9 @@ Back up your world before upgrading, as with any version jump.
 `config/advgenerators.json` has two fuel settings. `fuelMultiplier` scales every fuel value. `fuelValues` adds or
 replaces values in FE per mB, as `"fluid_id=fe_per_mb"` or `"#fluid_tag=fe_per_mb"` (for example
 `"minecraft:lava=200"`); the first matching entry wins and beats fuel recipes. Fuels can also be added with a data pack
-recipe of type `advgenerators:liquid_fuel`. A `[Fuels]` section in an old `advgenerators-common.toml` is imported too.
+recipe of type `advgenerators:liquid_fuel`. A value of `0` turns that fuel off. A `[Fuels]` section in an old `advgenerators-common.toml` is imported too.
 
-Other settings for the integrations: `joulesPerFe` (Mekanism, 2.5 by default, the same as Mekanism's own conversion),
+Other settings for the integrations: `euPerFe` (EU per FE for every EU output, 0.25 by default, the original's IC2 "Ratio"), `joulesPerFe` (Mekanism, 2.5 by default, the same as Mekanism's own conversion),
 `electrodynamicsJoulesPerFe`, `electrodynamicsVoltage`, and `createFePerTick`, `createSpeedRpm`,
 `createStressCapacity`, `createBuffer`.
 
