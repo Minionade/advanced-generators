@@ -1,0 +1,34 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "ic2"
+      ]
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ic2"
+    }
+  ],
+  "pattern": [
+    "XXX",
+    "XRX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "tag": "c:ingots/refined_iron"
+    },
+    "R": {
+      "item": "advgenerators:turbine_rotor_tier3"
+    }
+  },
+  "result": {
+    "id": "advgenerators:turbine_rotor_tier4",
+    "count": 1
+  }
+}

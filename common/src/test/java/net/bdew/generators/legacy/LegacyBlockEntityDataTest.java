@@ -40,6 +40,17 @@ class LegacyBlockEntityDataTest {
         assertFalse(out.contains("connectedCore"));
     }
 
+    /** TileForcedOutput saved a boolean per face; the wrench-forced output faces survive the upgrade. */
+    @Test void forcedOutputFacesAreKept() {
+        var old = new CompoundTag();
+        old.putBoolean("forced_EAST", true);
+        old.putBoolean("forced_UP", true);
+        old.putBoolean("forced_NORTH", false);
+        var out = LegacyBlockEntityData.convert(old, MachineKind.ITEM_OUTPUT);
+        assertEquals((1 << net.minecraft.core.Direction.EAST.get3DDataValue()) | (1 << net.minecraft.core.Direction.UP.get3DDataValue()), out.getInt("forcedSides"));
+        assertFalse(LegacyBlockEntityData.convert(new CompoundTag(), MachineKind.ITEM_OUTPUT).contains("forcedSides"));
+    }
+
     @Test void moduleKeepsItsConnection() {
         var old = new CompoundTag();
         old.put("connected", pos(10, -60, 3));

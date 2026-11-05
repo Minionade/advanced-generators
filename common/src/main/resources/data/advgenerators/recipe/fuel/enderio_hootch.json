@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "enderio"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "enderio"
+    }
+  ],
+  "type": "advgenerators:liquid_fuel",
+  "fuel": [
+    {
+      "fluid": "enderio:fluid_hootch_still"
+    },
+    {
+      "fluid": "enderio:fluid_hootch_flowing"
+    }
+  ],
+  "fePerMb": 1024
+}

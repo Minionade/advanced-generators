@@ -38,9 +38,10 @@ public final class TransferPlatformImpl {
             public double externalFuelFePerMb(net.minecraft.world.level.material.Fluid fluid) { return ExternalFuels.fePerMb(fluid); }
             public void capabilitiesChanged(MachineBlockEntity machine) { if (machine.getLevel() != null) machine.getLevel().invalidateCapabilities(machine.getBlockPos()); }
             public MachineBlockEntity createMachineBlockEntity(BlockPos pos, BlockState state) {
-                return ModList.get().isLoaded("buildcraftlib")
-                    ? BuildCraftPlatform.createMachineBlockEntity(pos, state)
-                    : new MachineBlockEntity(pos, state);
+                boolean buildcraft = ModList.get().isLoaded("buildcraftlib"), ic2 = ModList.get().isLoaded("ic2");
+                if (ic2) return buildcraft ? net.bdew.generators.neoforge.platform.Ic2BuildCraftMachineBlockEntity.create(pos, state)
+                    : net.bdew.generators.neoforge.platform.Ic2MachineBlockEntity.create(pos, state);
+                return buildcraft ? BuildCraftPlatform.createMachineBlockEntity(pos, state) : new MachineBlockEntity(pos, state);
             }
         };
     }
@@ -57,6 +58,8 @@ public final class TransferPlatformImpl {
             BuildCraftPlatform.push(module);
             return;
         }
+        if (module.kind().isJoulesOutput()) { JoulesPlatform.push(module); return; }
+        if (module.kind().isElectrodynamicsOutput()) { ElectrodynamicsPlatform.push(module); return; }
         var level=module.getLevel();
         var core=module.controller();if(core==null)return;
         for(Direction side:Direction.values()) {
@@ -123,6 +126,8 @@ public final class TransferPlatformImpl {
             return target!=null&&target.canReceive();
         }
         if (machine.kind().isMjOutput()) return BuildCraftPlatform.canOutputOn(machine, side);
+        if (machine.kind().isJoulesOutput()) return JoulesPlatform.canOutputOn(machine, side);
+        if (machine.kind().isElectrodynamicsOutput()) return ElectrodynamicsPlatform.canOutputOn(machine, side);
         if(machine.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
             IFluidHandler target=level.getCapability(Capabilities.FluidHandler.BLOCK,targetPos,side.getOpposite());
             return target!=null;

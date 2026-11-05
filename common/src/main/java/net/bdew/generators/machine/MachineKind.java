@@ -12,16 +12,21 @@ public enum MachineKind {
     EFFICIENCY_UPGRADE_TIER1("efficiencyUpgradeTier1", 1), EFFICIENCY_UPGRADE_TIER2("efficiencyUpgradeTier2", 2),
     FLUID_OUTPUT_SELECT("fluidOutput", 0), ITEM_INPUT("itemInput", 0), ITEM_OUTPUT("itemOutput", 0),
     HEATING_CHAMBER("heatingChamber", 0), MIXING_CHAMBER("mixingChamber", 0), HEAT_EXCHANGER("heatExchanger", 0),
-    CONTROL("control", 0), SENSOR("sensor", 0), MJ_OUTPUT("powerOutput", 0);
+    CONTROL("control", 0), SENSOR("sensor", 0), MJ_OUTPUT("powerOutput", 0),
+    JOULES_OUTPUT("powerOutput", 0), ELECTRODYNAMICS_OUTPUT("powerOutput", 0);
 
     public final String category;
     public final int tier;
     MachineKind(String category, int tier) { this.category = category; this.tier = tier; }
     public String id() { return name().toLowerCase(java.util.Locale.ROOT); }
     public boolean controller() { return category.equals("controller"); }
-    public boolean output() { return isEnergyOutput() || isMjOutput() || this == FLUID_OUTPUT_SELECT || this == ITEM_OUTPUT; }
+    public boolean output() { return isEnergyOutput() || isMjOutput() || isJoulesOutput() || isElectrodynamicsOutput() || this == FLUID_OUTPUT_SELECT || this == ITEM_OUTPUT; }
     public boolean isEnergyOutput() { return this == FE_OUTPUT || isEuOutput(); }
     public boolean isMjOutput() { return this == MJ_OUTPUT; }
+    public boolean isJoulesOutput() { return this == JOULES_OUTPUT; }
+    public boolean isElectrodynamicsOutput() { return this == ELECTRODYNAMICS_OUTPUT; }
+    /** Any module that pushes the controller's energy out, in whatever unit the neighbour wants. */
+    public boolean isPowerOutput() { return isEnergyOutput() || isMjOutput() || isJoulesOutput() || isElectrodynamicsOutput(); }
     public boolean isEuOutput() { return name().startsWith("EU_OUTPUT_"); }
     public int euOutputRate() {
         return switch (this) {

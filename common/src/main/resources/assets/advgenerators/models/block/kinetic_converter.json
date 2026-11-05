@@ -1,0 +1,71 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "advgenerators:block/feoutput/main",
+    "casing": "advgenerators:block/feoutput/main",
+    "axis": "create:block/axis",
+    "axis_top": "create:block/axis_top"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 6],
+      "faces": {
+        "down": { "texture": "#casing" },
+        "up": { "texture": "#casing" },
+        "north": { "texture": "#casing" },
+        "south": { "texture": "#casing" },
+        "west": { "texture": "#casing" },
+        "east": { "texture": "#casing" }
+      }
+    },
+    {
+      "from": [0, 0, 10],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "#casing" },
+        "up": { "texture": "#casing" },
+        "north": { "texture": "#casing" },
+        "south": { "texture": "#casing" },
+        "west": { "texture": "#casing" },
+        "east": { "texture": "#casing" }
+      }
+    },
+    {
+      "from": [0, 0, 6],
+      "to": [6, 16, 10],
+      "faces": {
+        "down": { "texture": "#casing" },
+        "up": { "texture": "#casing" },
+        "north": { "texture": "#casing" },
+        "south": { "texture": "#casing" },
+        "west": { "texture": "#casing" },
+        "east": { "texture": "#casing" }
+      }
+    },
+    {
+      "from": [10, 0, 6],
+      "to": [16, 16, 10],
+      "faces": {
+        "down": { "texture": "#casing" },
+        "up": { "texture": "#casing" },
+        "north": { "texture": "#casing" },
+        "south": { "texture": "#casing" },
+        "west": { "texture": "#casing" },
+        "east": { "texture": "#casing" }
+      }
+    },
+    {
+      "from": [6, 0, 6],
+      "to": [10, 16, 10],
+      "faces": {
+        "down": { "texture": "#axis_top" },
+        "up": { "texture": "#axis_top" },
+        "north": { "texture": "#axis" },
+        "south": { "texture": "#axis" },
+        "west": { "texture": "#axis" },
+        "east": { "texture": "#axis" }
+      }
+    }
+  ]
+}

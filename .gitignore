@@ -26,3 +26,6 @@ forge*changelog.txt
 src/generated
 logs/
 .architectury-transformer/
+
+# Source art is not shipped
+*.psd

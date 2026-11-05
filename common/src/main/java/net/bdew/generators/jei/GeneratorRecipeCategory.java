@@ -85,7 +85,7 @@ public final class GeneratorRecipeCategory implements IRecipeCategory<MachineRec
 
     @Override public void draw(MachineRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
         String details = switch (recipe.kind) {
-            case "liquid_fuel" -> String.format(java.util.Locale.ROOT, "%.2f FE/mB", recipe.value("fePerMb"));
+            case "liquid_fuel" -> String.format(java.util.Locale.ROOT, "%.2f FE/mB", recipe.value("fePerMb") * GeneratorConfig.INSTANCE.fuelMultiplier);
             case "exchanger_heating", "exchanger_cooling" -> String.format(java.util.Locale.ROOT, "%.2f HU", recipe.value("heat"));
             case "carbon_source" -> String.format(java.util.Locale.ROOT, "%.2f carbon", recipe.value("carbonValue"));
             default -> "";

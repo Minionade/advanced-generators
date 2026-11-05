@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "ic2"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ic2"
+    }
+  ],
+  "type": "advgenerators:liquid_fuel",
+  "fuel": [
+    {
+      "fluid": "ic2:hydrogen"
+    },
+    {
+      "fluid": "ic2:flowing_hydrogen"
+    }
+  ],
+  "fePerMb": 80
+}

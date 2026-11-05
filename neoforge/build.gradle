@@ -6,6 +6,7 @@ architectury {
 repositories {
     mavenCentral { content { includeGroup 'org.appliedenergistics' } }
     maven { url = 'https://www.cursemaven.com' }
+    maven { url = 'https://maven.createmod.net' } // Flywheel, which Create's classes refer to
     maven { url = 'https://api.modrinth.com/maven' }
     maven {
         url = 'https://modmaven.dev/'
@@ -25,14 +26,22 @@ dependencies {
     modCompileOnly "mezz.jei:jei-1.21.1-neoforge-api:${rootProject.jei_version}"
     modLocalRuntime "mezz.jei:jei-1.21.1-neoforge:${rootProject.jei_version}"
     modCompileOnly "curse.maven:mekanism-268560:7904058"
-    modCompileOnly "curse.maven:singularity-iteration-1617642:9299533"
     modCompileOnly "curse.maven:modern-industrialization-405388:8863289"
+    modCompileOnly "curse.maven:industrial-craft-2-nostalgia-1725644:9365653"
+    modCompileOnly "maven.modrinth:create:UjX6dr61" // Create 6.0.10
+    compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-1.21.1:1.0.6"
+    compileOnly "net.createmod.ponder:ponder-neoforge:1.0.82+mc1.21.1"
+    modCompileOnly "maven.modrinth:xmhmr70o:NX8yAjYd" // Electrodynamics 1.1.1
+    modCompileOnly "maven.modrinth:kzF5itx6:WLEjmMuR" // Voltaic 1.2.2 (Electrodynamics API)
     modCompileOnly "maven.modrinth:z3Aj5eOl:VSfBR0IB" // BuildCraft Community Edition MJ API
     modCompileOnly "dev.technici4n:GrandPower:3.0.0"
     compileOnly "org.appliedenergistics:guideme:${rootProject.guideme_version}:api"
     modLocalRuntime "curse.maven:mekanism-268560:7904058"
-    modLocalRuntime "curse.maven:singularity-iteration-1617642:9299533"
     modLocalRuntime "curse.maven:modern-industrialization-405388:8863289"
+    modLocalRuntime "curse.maven:industrial-craft-2-nostalgia-1725644:9365653"
+    modLocalRuntime "maven.modrinth:xmhmr70o:NX8yAjYd"
+    modLocalRuntime "maven.modrinth:create:UjX6dr61"
+    modLocalRuntime "maven.modrinth:kzF5itx6:WLEjmMuR"
     modLocalRuntime "dev.technici4n:GrandPower:3.0.0"
     modLocalRuntime "org.appliedenergistics:guideme:${rootProject.guideme_version}"
     modLocalRuntime "maven.modrinth:z3Aj5eOl:VSfBR0IB" // BuildCraft Community Edition 8.0.22

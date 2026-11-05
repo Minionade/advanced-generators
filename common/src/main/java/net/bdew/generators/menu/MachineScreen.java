@@ -30,6 +30,11 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
     private void clickMenuButton(int id) {
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId,id);
     }
+    /** Escape and the inventory key leave the output screen for the machine screen, like the original's parent screen. */
+    @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers) {
+        if(outputConfigOpen&&(keyCode==org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE||minecraft.options.keyInventory.matches(keyCode,scanCode))) { outputConfigOpen=false; return true; }
+        return super.keyPressed(keyCode,scanCode,modifiers);
+    }
     @Override public boolean mouseClicked(double mouseX,double mouseY,int button) {
         int x=(int)mouseX-leftPos,y=(int)mouseY-topPos;
         if(outputConfigOpen) {
@@ -50,12 +55,15 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
             }
             return true;
         }
-        if (button == 0 && menu.machine().kind()==MachineKind.CONTROL) {
-            if (inside(x,y,98,38)) { clickMenuButton(0); return true; }
-            if (inside(x,y,62,38)) { clickMenuButton(1); return true; }
-        } else if (button == 0 && menu.machine().kind()==MachineKind.SENSOR) {
-            if (inside(x,y,53,38)) { clickMenuButton(0); return true; }
-            if (inside(x,y,71,38)) { clickMenuButton(1); return true; }
+        // left click steps forward through the choices, right click steps back, only with an empty cursor
+        if ((button == 0 || button == 1) && menu.getCarried().isEmpty()) {
+            if (menu.machine().kind()==MachineKind.CONTROL) {
+                if (inside(x,y,98,38)) { clickMenuButton(button==0?0:2); return true; }
+                if (button == 0 && inside(x,y,62,38)) { clickMenuButton(1); return true; }
+            } else if (menu.machine().kind()==MachineKind.SENSOR) {
+                if (inside(x,y,53,38)) { clickMenuButton(button==0?0:2); return true; }
+                if (inside(x,y,71,38)) { clickMenuButton(button==0?1:3); return true; }
+            }
         }
         if(menu.machine().kind().controller()&&x>=153&&x<170) {
             if(y>=19&&y<36) { outputConfigOpen=!outputConfigOpen; return true; }
@@ -93,7 +101,7 @@ public final class MachineScreen extends AbstractContainerScreen<MachineMenu> {
                 g.renderItem(new ItemStack(outputItem.get()),0,0);
                 g.pose().popPose();
             }
-            boolean power=outputKind!=null&&(outputKind.isEnergyOutput()||outputKind.isMjOutput());
+            boolean power=outputKind!=null&&outputKind.isPowerOutput();
             boolean fluid=outputKind==MachineKind.FLUID_OUTPUT_SELECT;
             if(power) g.drawString(font,GuiFormat.perTick(menu.outputAverage(row),menu.outputUnitKey(row)),x+28,rowY+5,0xff404040,false);
             else if(fluid) g.drawString(font,GuiFormat.fluidPerTick(menu.outputAverage(row)),x+28,rowY+5,0xff404040,false);

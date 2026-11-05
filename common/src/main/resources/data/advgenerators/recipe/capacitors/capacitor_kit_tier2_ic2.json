@@ -1,0 +1,36 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "ic2"
+      ]
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ic2"
+    }
+  ],
+  "pattern": [
+    "IDI",
+    "IXI",
+    "IDI"
+  ],
+  "key": {
+    "X": {
+      "item": "advgenerators:upgrade_kit"
+    },
+    "I": {
+      "tag": "c:ingots/refined_iron"
+    },
+    "D": {
+      "item": "ic2:energy_crystal"
+    }
+  },
+  "result": {
+    "id": "advgenerators:capacitor_kit_tier2"
+  }
+}

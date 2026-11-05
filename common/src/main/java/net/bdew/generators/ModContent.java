@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.*;
 import java.util.*;
+import java.util.function.Supplier;
 
 public final class ModContent {
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Generators.MOD_ID, Registries.BLOCK);
@@ -41,6 +42,8 @@ public final class ModContent {
             if (kind == MachineKind.FE_OUTPUT && Platform.isFabric()) continue; // Fabric offers the EU outputs only
             if (kind.isEuOutput() && !euEnergyApiLoaded()) continue;
             if (kind.isMjOutput() && !Platform.isModLoaded("buildcraftlib")) continue;
+            if (kind.isJoulesOutput() && !Platform.isModLoaded("mekanism")) continue;
+            if (kind.isElectrodynamicsOutput() && !Platform.isModLoaded("electrodynamics")) continue;
             var block = BLOCKS.register(kind.id(), () -> MachineBlock.create(kind)); MACHINES.put(kind, block);
             ALL_ITEMS.put(kind.id(), ITEMS.register(kind.id(), () -> new MachineBlockItem(block.get(), kind)));
         }
@@ -71,12 +74,25 @@ public final class ModContent {
         .icon(() -> new ItemStack(MACHINES.get(MachineKind.FUEL_TURBINE_CONTROLLER).get()))
         .displayItems((parameters, output) -> ALL_ITEMS.values().forEach(item -> output.accept(item.get())))));
 
+    /**
+     * Content a loader-specific integration adds (it has to be requested before {@link #register()}): the block, its
+     * item in the creative tab, and block entity types.
+     */
+    public static <T extends Block> RegistrySupplier<T> addBlock(String name, Supplier<T> block) { return BLOCKS.register(name, block); }
+    public static <T extends Item> RegistrySupplier<T> addItem(String name, Supplier<T> item) {
+        RegistrySupplier<T> registered = ITEMS.register(name, item);
+        @SuppressWarnings("unchecked") RegistrySupplier<Item> asItem = (RegistrySupplier<Item>) registered;
+        ALL_ITEMS.put(name, asItem);
+        return registered;
+    }
+    public static <T extends BlockEntityType<?>> RegistrySupplier<T> addBlockEntityType(String name, Supplier<T> type) { return ENTITIES.register(name, type); }
+
     public static void register() {
         FLUIDS.register(); BLOCKS.register(); ITEMS.register(); ENTITIES.register(); MENUS.register(); TYPES.register(); SERIALIZERS.register(); TABS.register();
     }
     private static boolean euEnergyApiLoaded() {
         if (Platform.isFabric()) return Platform.isModLoaded("team_reborn_energy");
-        return Platform.isModLoaded("modern_industrialization") || Platform.isModLoaded("mio_icif");
+        return Platform.isModLoaded("modern_industrialization") || Platform.isModLoaded("ic2");
     }
     public static final class FluidDef {
         public final RegistrySupplier<Fluid> source, flowing;

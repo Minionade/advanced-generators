@@ -100,6 +100,12 @@ public final class LegacyBlockEntityData {
             default -> {}
         }
 
+        // TileForcedOutput: "forced_<DIRECTION>" booleans on the output modules
+        int forced = 0;
+        for (var direction : net.minecraft.core.Direction.values())
+            if (old.getBoolean("forced_" + direction.name())) forced |= 1 << direction.get3DDataValue();
+        if (forced != 0) out.putInt("forcedSides", forced);
+
         if (kind.controller()) out.put("outputConfigs", outputConfigs(old));
         return out;
     }

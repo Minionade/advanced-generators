@@ -1,0 +1,36 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "ic2"
+      ]
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ic2"
+    }
+  ],
+  "pattern": [
+    "IDI",
+    "IXI",
+    "IDI"
+  ],
+  "key": {
+    "X": {
+      "item": "advgenerators:power_capacitor_tier2"
+    },
+    "I": {
+      "item": "ic2:carbon_plate"
+    },
+    "D": {
+      "item": "ic2:lapotron_crystal"
+    }
+  },
+  "result": {
+    "id": "advgenerators:power_capacitor_tier3"
+  }
+}

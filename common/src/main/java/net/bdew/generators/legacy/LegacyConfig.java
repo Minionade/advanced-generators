@@ -86,6 +86,13 @@ public final class LegacyConfig {
         for (int tier = 0; tier < 3; tier++)
             c.capacitorCapacity[tier] = (long) num(table(capacitors, "Tier" + (tier + 1)), "Capacity", c.capacitorCapacity[tier]);
 
+        // The Reforged edition's [Fuels] section
+        var fuels = table(root, "Fuels");
+        c.fuelMultiplier = num(fuels, "Multiplier", c.fuelMultiplier);
+        if (fuels.get("FuelValues") instanceof List<?> values) {
+            c.fuelValues = values.stream().filter(String.class::isInstance).map(String.class::cast).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        }
+
         CONTROLLERS.forEach((section, controller) -> {
             var list = table(root, section).get("Modules");
             if (list instanceof List<?> entries) c.moduleLimits.put(controller, limits(entries));

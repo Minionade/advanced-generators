@@ -1,0 +1,145 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "advgenerators:fuel_turbine_controller",
+      "required": false
+    },
+    {
+      "id": "advgenerators:steam_turbine_controller",
+      "required": false
+    },
+    {
+      "id": "advgenerators:syngas_controller",
+      "required": false
+    },
+    {
+      "id": "advgenerators:exchanger_controller",
+      "required": false
+    },
+    {
+      "id": "advgenerators:fluid_input",
+      "required": false
+    },
+    {
+      "id": "advgenerators:gas_input",
+      "required": false
+    },
+    {
+      "id": "advgenerators:fuel_tank",
+      "required": false
+    },
+    {
+      "id": "advgenerators:turbine_tier1",
+      "required": false
+    },
+    {
+      "id": "advgenerators:turbine_tier2",
+      "required": false
+    },
+    {
+      "id": "advgenerators:turbine_tier3",
+      "required": false
+    },
+    {
+      "id": "advgenerators:turbine_tier4",
+      "required": false
+    },
+    {
+      "id": "advgenerators:turbine_tier5",
+      "required": false
+    },
+    {
+      "id": "advgenerators:power_capacitor_tier1",
+      "required": false
+    },
+    {
+      "id": "advgenerators:power_capacitor_tier2",
+      "required": false
+    },
+    {
+      "id": "advgenerators:power_capacitor_tier3",
+      "required": false
+    },
+    {
+      "id": "advgenerators:efficiency_upgrade_tier1",
+      "required": false
+    },
+    {
+      "id": "advgenerators:efficiency_upgrade_tier2",
+      "required": false
+    },
+    {
+      "id": "advgenerators:fluid_output_select",
+      "required": false
+    },
+    {
+      "id": "advgenerators:item_input",
+      "required": false
+    },
+    {
+      "id": "advgenerators:item_output",
+      "required": false
+    },
+    {
+      "id": "advgenerators:heating_chamber",
+      "required": false
+    },
+    {
+      "id": "advgenerators:mixing_chamber",
+      "required": false
+    },
+    {
+      "id": "advgenerators:heat_exchanger",
+      "required": false
+    },
+    {
+      "id": "advgenerators:control",
+      "required": false
+    },
+    {
+      "id": "advgenerators:sensor",
+      "required": false
+    },
+    {
+      "id": "advgenerators:fe_output",
+      "required": false
+    },
+    {
+      "id": "advgenerators:eu_output_lv",
+      "required": false
+    },
+    {
+      "id": "advgenerators:eu_output_mv",
+      "required": false
+    },
+    {
+      "id": "advgenerators:eu_output_hv",
+      "required": false
+    },
+    {
+      "id": "advgenerators:eu_output_ev",
+      "required": false
+    },
+    {
+      "id": "advgenerators:eu_output_iv",
+      "required": false
+    },
+    {
+      "id": "advgenerators:mj_output",
+      "required": false
+    },
+    {
+      "id": "advgenerators:joules_output",
+      "required": false
+    },
+    {
+      "id": "advgenerators:electrodynamics_output",
+      "required": false
+    },
+    {
+      "id": "advgenerators:kinetic_converter",
+      "required": false
+    }
+  ]
+}

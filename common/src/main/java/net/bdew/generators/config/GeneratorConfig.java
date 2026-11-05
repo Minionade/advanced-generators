@@ -26,7 +26,27 @@ public final class GeneratorConfig {
     public double syngasWorkHeat = 150, syngasMaxHeat = 200, carbonPerSyngas = 50, steamPerSyngas = 10, waterSteamRatio = 3;
     public double mixingThroughput = 1, heatingThroughput = 50, chamberHeating = .1, chamberLoss = .02, carbonPerHeat = 20;
     public double exchangerMaxHeat = 1000, exchangerStartHeat = 150, exchangerDecay = .05, exchangerTransfer = 16;
+    /** Mekanism Joules per FE (Mekanism's own default conversion is 1 FE = 2.5 J). */
+    public double joulesPerFe = 2.5;
+    /** Electrodynamics Joules per FE, and the voltage it is asked for (clamped to what the receiver accepts). */
+    public double electrodynamicsJoulesPerFe = 1, electrodynamicsVoltage = 120;
+    /** Create Kinetic Converter: FE used per tick while it turns, the rotation it makes, the stress it carries, its FE buffer. */
+    public int createFePerTick = 100, createSpeedRpm = 256, createStressCapacity = 256, createBuffer = 10000;
+    /** Multiplies every fuel value (recipes, other mods' fuels and fuelValues alike). */
+    public double fuelMultiplier = 1;
+    /** Extra or replacement fuel values in FE per mB: "fluid_id=fe_per_mb" or "#fluid_tag=fe_per_mb". First match wins. */
+    public java.util.List<String> fuelValues = new java.util.ArrayList<>();
     public Map<String, Map<String, Integer>> moduleLimits = defaults();
+    private transient java.util.List<FuelOverrides.Entry> parsedFuelValues;
+
+    public java.util.List<FuelOverrides.Entry> fuelOverrides() {
+        if (parsedFuelValues == null) {
+            var errors = new java.util.ArrayList<String>();
+            parsedFuelValues = FuelOverrides.parse(fuelValues, errors);
+            errors.forEach(e -> LOG.warn("Ignoring fuelValues entry {}", e));
+        }
+        return parsedFuelValues;
+    }
 
     private static Map<String, Map<String, Integer>> defaults() {
         var result = new LinkedHashMap<String, Map<String, Integer>>();
@@ -68,6 +88,8 @@ public final class GeneratorConfig {
         } catch (IllegalAccessException e) { throw new IllegalStateException(e); }
         if (exchangerDecay >= 1 || syngasWorkHeat >= syngasMaxHeat || exchangerStartHeat >= exchangerMaxHeat || !Double.isFinite(inertiaExponent))
             throw new IllegalArgumentException("Invalid heat or inertia configuration");
+        if (fuelValues == null) fuelValues = new java.util.ArrayList<>();
+        parsedFuelValues = null;
         if (spinUp <= baseDrag + coilDrag) throw new IllegalArgumentException("spinUp must exceed baseDrag + coilDrag");
         for (var kind : MachineKind.values()) if (kind.controller() && !moduleLimits.containsKey(kind.id())) throw new IllegalArgumentException("Missing module limits: " + kind.id());
         moduleLimits.values().forEach(m -> m.forEach((k,v) -> { if (v == null || v < 0 || v > maxConnectedBlocks) throw new IllegalArgumentException("Invalid module limit: " + k); }));

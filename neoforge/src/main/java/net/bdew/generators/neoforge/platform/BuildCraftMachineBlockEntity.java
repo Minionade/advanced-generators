@@ -27,12 +27,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /** Native BuildCraft MJ endpoint used only when BCCE is installed. */
-public final class BuildCraftMachineBlockEntity extends MachineBlockEntity implements MjPortProvider {
+public class BuildCraftMachineBlockEntity extends MachineBlockEntity implements MjPortProvider {
     private long outputTick = Long.MIN_VALUE;
     private long outputThisTick;
     private final Map<Direction, MjCapabilityHelper> mjCapabilities = new EnumMap<>(Direction.class);
 
-    private BuildCraftMachineBlockEntity(BlockPos pos, BlockState state) {
+    protected BuildCraftMachineBlockEntity(BlockPos pos, BlockState state) {
         super(pos, state);
         for (Direction side : Direction.values()) {
             mjCapabilities.put(side, new MjCapabilityHelper(new OutputConnector(side)));

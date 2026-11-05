@@ -40,6 +40,8 @@ public final class MachineBlockItem extends BlockItem {
             }
             case FE_OUTPUT -> tooltip.add(Component.translatable("advgenerators.tooltip.fe_output"));
             case MJ_OUTPUT -> tooltip.add(Component.translatable("advgenerators.tooltip.mj_output"));
+            case JOULES_OUTPUT -> tooltip.add(Component.translatable("advgenerators.tooltip.joules_output"));
+            case ELECTRODYNAMICS_OUTPUT -> tooltip.add(Component.translatable("advgenerators.tooltip.electrodynamics_output"));
             case EU_OUTPUT_LV, EU_OUTPUT_MV, EU_OUTPUT_HV, EU_OUTPUT_EV, EU_OUTPUT_IV ->
                     tooltip.add(Component.translatable("advgenerators.tooltip.eu", Component.literal(Integer.toString(kind.tier)).withStyle(ChatFormatting.YELLOW), Component.literal(number(new long[]{32, 128, 512, 2048, 8192}[kind.tier - 1])).withStyle(ChatFormatting.YELLOW)));
             default -> { }

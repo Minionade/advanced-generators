@@ -149,6 +149,7 @@ public final class MachineMenu extends AbstractContainerMenu {
         if(kind==null)return "fe";
         if(kind.isEuOutput())return "eu";
         if(kind.isMjOutput())return "mj";
+        if(kind.isJoulesOutput()||kind.isElectrodynamicsOutput())return "j";
         return kind==MachineKind.FLUID_OUTPUT_SELECT?"mb":"fe";
     }
     public String outputUnit(int row) {
@@ -156,13 +157,14 @@ public final class MachineMenu extends AbstractContainerMenu {
         if(kind==null)return "/t";
         if(kind.isEuOutput())return "EU/t";
         if(kind.isMjOutput())return "MJ/t";
+        if(kind.isJoulesOutput()||kind.isElectrodynamicsOutput())return "J/t";
         if(kind.isEnergyOutput())return "FE/t";
         return kind==MachineKind.FLUID_OUTPUT_SELECT?"mB/t":"items/t";
     }
     public String outputLabel(int row) {
         var kind=outputKind(row); var direction=outputDirection(row);
         if(kind==null||direction==null)return "";
-        String output=kind.isEuOutput()?"EU":kind.isMjOutput()?"MJ":kind.isEnergyOutput()?"FE":kind==MachineKind.FLUID_OUTPUT_SELECT?"FL":kind==MachineKind.ITEM_OUTPUT?"IT":"Out";
+        String output=kind.isEuOutput()?"EU":kind.isMjOutput()?"MJ":kind.isJoulesOutput()||kind.isElectrodynamicsOutput()?"J":kind.isEnergyOutput()?"FE":kind==MachineKind.FLUID_OUTPUT_SELECT?"FL":kind==MachineKind.ITEM_OUTPUT?"IT":"Out";
         String face=switch(direction){case DOWN->"D";case UP->"U";case NORTH->"N";case SOUTH->"S";case WEST->"W";case EAST->"E";};
         return output+" "+face;
     }
@@ -233,26 +235,26 @@ public final class MachineMenu extends AbstractContainerMenu {
             else if (button==18) dumpBuffers();
             else return false;
         } else if (machine.kind()==MachineKind.CONTROL) {
-            if (button==0) {
+            if (button==0||button==2) {
                 var core = machine.controller();
                 int[] actions = core == null ? new int[]{0} : MachineBlockEntity.controlActions(core.kind());
                 int current = 0;
                 for (int i=0;i<actions.length;i++) if (actions[i] == machine.controlAction) current = i;
-                machine.controlAction = actions[(current+1)%actions.length];
+                // left click: next action, right click: previous
+                machine.controlAction = actions[Math.floorMod(current+(button==0?1:-1),actions.length)];
             }
             else if (button==1) machine.controlHigh=!machine.controlHigh;
             else return false;
         } else if (machine.kind()==MachineKind.SENSOR) {
-            if (button==0) {
-                var core = machine.controller();
+            var core = machine.controller();
+            if (button==0||button==2) {
                 int count = core == null ? 0 : MachineBlockEntity.sensorMetricCount(core.kind());
-                machine.sensorMetric=(machine.sensorMetric+1)%(count+1);
+                machine.sensorMetric=Math.floorMod(machine.sensorMetric+(button==0?1:-1),count+1);
                 machine.sensorCondition=0;
             }
-            else if (button==1) {
-                var core = machine.controller();
+            else if (button==1||button==3) {
                 int count = core == null ? 9 : MachineBlockEntity.sensorConditionCount(core.kind(), machine.sensorMetric);
-                machine.sensorCondition=(machine.sensorCondition+1)%count;
+                machine.sensorCondition=Math.floorMod(machine.sensorCondition+(button==1?1:-1),Math.max(1,count));
             }
             else return false;
         } else return false;

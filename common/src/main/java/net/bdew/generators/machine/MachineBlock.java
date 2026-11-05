@@ -3,6 +3,9 @@ package net.bdew.generators.machine;
 import com.mojang.serialization.MapCodec;
 import dev.architectury.registry.menu.MenuRegistry;
 import net.bdew.generators.platform.TransferPlatform;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,7 +25,7 @@ import net.minecraft.world.phys.BlockHitResult;
 public class MachineBlock extends BaseEntityBlock {
     public final MachineKind kind;
     public MachineBlock(MachineKind kind) {
-        super(Properties.of().mapColor(net.minecraft.world.level.material.MapColor.METAL).strength(3.5F).sound(SoundType.METAL).requiresCorrectToolForDrops());
+        super(Properties.of().mapColor(net.minecraft.world.level.material.MapColor.STONE).sound(SoundType.STONE).strength(2, 8));
         this.kind = kind;
         var state = stateDefinition.any();
         if (kind.hasFacing()) state = state.setValue(BlockStateProperties.FACING, Direction.NORTH);
@@ -71,9 +74,35 @@ public class MachineBlock extends BaseEntityBlock {
     @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide ? null : createTickerHelper(type, net.bdew.generators.ModContent.MACHINE_ENTITY.get(), MachineBlockEntity::tick);
     }
+    /** Item tags the original (and the usual mods) use for wrenches. */
+    private static final java.util.List<TagKey<Item>> WRENCHES = java.util.List.of(
+        TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "tools/wrench")), TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "wrenches")),
+        TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.fromNamespaceAndPath("neoforge", "wrenches")),
+        TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "tools/wrench")), TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.fromNamespaceAndPath("forge", "wrenches")));
+    private static boolean isWrench(ItemStack stack) { return !stack.isEmpty() && WRENCHES.stream().anyMatch(stack::is); }
+
+    /**
+     * A wrench turns sensors and EU outputs to face the clicked side. On the other output modules it forces the
+     * clicked face to be an output, or takes that back, even when nothing there can receive.
+     */
+    private boolean wrench(BlockState state, Level level, BlockPos pos, BlockHitResult hit) {
+        if (kind.hasFacing()) {
+            Direction face = hit.getDirection();
+            if (level.isClientSide) return true;
+            if (state.getValue(BlockStateProperties.FACING) != face) level.setBlock(pos, state.setValue(BlockStateProperties.FACING, face), 3);
+            return true;
+        }
+        if (kind.output() && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
+            if (level.isClientSide) return true;
+            return machine.toggleForcedSide(hit.getDirection());
+        }
+        return false;
+    }
     @Override protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof UpgradeKitItem) return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-        if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine && TransferPlatform.interact(machine, player, hand, hit.getDirection()))
+        if (isWrench(stack) && wrench(state, level, pos, hit)) return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        // only the fluid input module takes buckets and other fluid containers
+        if (kind == MachineKind.FLUID_INPUT && level.getBlockEntity(pos) instanceof MachineBlockEntity machine && TransferPlatform.interact(machine, player, hand, hit.getDirection()))
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
@@ -82,11 +111,12 @@ public class MachineBlock extends BaseEntityBlock {
         if (!(level.getBlockEntity(pos) instanceof MachineBlockEntity machine)) return InteractionResult.PASS;
         // Controllers own their main GUI; control/sensor modules have their
         // own per-module configuration. All other modules open the controller.
-        var target = kind.controller() || kind == MachineKind.CONTROL || kind == MachineKind.SENSOR ? machine : machine.controller();
-        if (target == null) {
-            if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.translatable("advgenerators.status." + machine.network().error()), true);
-            return InteractionResult.sidedSuccess(level.isClientSide);
+        var core = kind.controller() ? machine : machine.controller();
+        if (core == null) {
+            if (!level.isClientSide) player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("bdlib.multiblock.notconnected"));
+            return InteractionResult.CONSUME;
         }
+        var target = kind == MachineKind.CONTROL || kind == MachineKind.SENSOR ? machine : core;
         if (!level.isClientSide && target.kind().controller()) target.refreshOutputFaces();
         if (kind.controller() && !machine.hasRequiredModules()) {
             if (!level.isClientSide) {
@@ -123,6 +153,7 @@ public class MachineBlock extends BaseEntityBlock {
         // sensors actually emit a non-zero signal in getSignal below.
         return kind == MachineKind.CONTROL || kind == MachineKind.SENSOR || kind.output();
     }
+    @Override protected int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) { return getSignal(state, level, pos, direction); }
     @Override protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
         return kind == MachineKind.SENSOR && state.getValue(BlockStateProperties.POWERED) && direction == state.getValue(BlockStateProperties.FACING).getOpposite() ? 15 : 0;
     }

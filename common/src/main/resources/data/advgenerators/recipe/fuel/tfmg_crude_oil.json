@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "tfmg"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "tfmg"
+    }
+  ],
+  "type": "advgenerators:liquid_fuel",
+  "fuel": [
+    {
+      "fluid": "tfmg:crude_oil"
+    },
+    {
+      "fluid": "tfmg:flowing_crude_oil"
+    }
+  ],
+  "fePerMb": 500
+}

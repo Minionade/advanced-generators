@@ -22,7 +22,7 @@ class ModelTexturesTest {
             for (Path file : (Iterable<Path>) files.filter(f -> f.toString().endsWith(".json"))::iterator) {
                 var matcher = TEXTURE.matcher(Files.readString(file));
                 while (matcher.find()) {
-                    if (matcher.group(1).equals("block/rotated")) continue; // a parent model, not a texture
+                    if (Files.exists(ASSETS.resolve("models/" + matcher.group(1) + ".json"))) continue; // a parent model, not a texture
                     if (!Files.exists(ASSETS.resolve("textures/" + matcher.group(1) + ".png")))
                         missing.add(file.getFileName() + " -> " + matcher.group(1));
                 }

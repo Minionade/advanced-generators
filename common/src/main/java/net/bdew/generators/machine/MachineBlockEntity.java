@@ -1,6 +1,7 @@
 package net.bdew.generators.machine;
 
 import net.bdew.generators.ModContent;
+import net.bdew.generators.config.FuelOverrides;
 import net.bdew.generators.config.GeneratorConfig;
 import net.bdew.generators.legacy.LegacyBlockEntityData;
 import net.bdew.generators.menu.MachineMenu;
@@ -90,6 +91,19 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return cachedNetwork;
     }
     public BlockPos connectedCore() { return connectedCore; }
+    /** Output faces forced with a wrench, one bit per direction: they become outputs even with nothing there to receive. */
+    private int forcedSides;
+    public boolean forced(Direction side) { return (forcedSides >> side.get3DDataValue() & 1) != 0; }
+    /** What the wrench does on an output module: switch that face on or off as an output. */
+    public boolean toggleForcedSide(Direction side) {
+        var core = controller();
+        if (level == null || level.isClientSide || core == null || !kind().output() || kind().hasFacing()) return false;
+        forcedSides ^= 1 << side.get3DDataValue();
+        setChanged();
+        core.refreshOutputFaces();
+        return true;
+    }
+    private void clearForcedSides() { if (forcedSides != 0) { forcedSides = 0; setChanged(); } }
     public boolean connectTo(MachineBlockEntity core) {
         if (kind().controller() || core == null || !core.kind().controller() || connectedCore != null || !core.canAcceptModule(kind())) return false;
         connectedCore = core.getBlockPos().immutable();
@@ -106,6 +120,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (connectedCore != null) {
             if (controller() != null) return false;
             connectedCore = null;
+            clearForcedSides();
         }
         var candidates = MultiblockNetwork.findConnections(level, worldPosition, kind());
         if (candidates.isEmpty()) return false;
@@ -137,6 +152,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (level == null || !kind().controller()) return;
         for (var module : members()) {
             module.connectedCore = null;
+            module.clearForcedSides();
             module.setChanged();
             level.sendBlockUpdated(module.worldPosition, module.getBlockState(), module.getBlockState(), 3);
             level.updateNeighborsAt(module.worldPosition, module.getBlockState().getBlock());
@@ -275,10 +291,14 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (buffers[0].empty()) return 0;
         return fuelFePerMb(buffers[0].fluid());
     }
-    /** Fuel recipes first, then what other mods (BuildCraft, Modern Industrialization) define as fuels. */
+    /** Config entries first, then fuel recipes, then what other mods (BuildCraft, Modern Industrialization) define as fuels. */
     public double fuelFePerMb(Fluid fluid) {
-        double fromRecipe = recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(fluid)).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
-        return fromRecipe > 0 ? fromRecipe : TransferPlatform.externalFuelFePerMb(fluid);
+        var config = GeneratorConfig.INSTANCE;
+        var key = BuiltInRegistries.FLUID.getKey(fluid);
+        double value = FuelOverrides.find(config.fuelOverrides(), key, tag -> fluid.is(TagKey.create(Registries.FLUID, tag))).orElse(0);
+        if (value <= 0) value = recipes("liquid_fuel").stream().map(RecipeHolder::value).filter(r -> r.matchesFluid(fluid)).mapToDouble(r -> r.value("fePerMb")).findFirst().orElse(0);
+        if (value <= 0) value = TransferPlatform.externalFuelFePerMb(fluid);
+        return value * config.fuelMultiplier;
     }
     private void addEnergy(double quantity) {
         double room = Math.max(0, energyCapacity - energy - energyFraction);
@@ -420,7 +440,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 boolean facingMatches = !module.kind().hasFacing()
                     || module.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) == direction;
                 boolean available = !memberPositions.contains(target) && !target.equals(worldPosition)
-                    && facingMatches && (apiPort || TransferPlatform.canOutputOn(module, direction));
+                    && facingMatches && (apiPort || module.forced(direction) || TransferPlatform.canOutputOn(module, direction));
                 if (available) {
                     outputConfigs.computeIfAbsent(face, key -> {
                         changed[0] = true;
@@ -662,6 +682,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         tag.putLong("energy",energy); tag.putDouble("heat",heat); tag.putDouble("carbon",carbon); tag.putDouble("burnTime",burnTime); tag.putDouble("rpm",rpm); tag.putDouble("fraction",energyFraction);
         for(int i=0;i<4;i++) tag.put("buffer"+i,buffers[i].save(registries));
         tag.put("inventory",inventory.createTag(registries));
+        if (forcedSides != 0) tag.putInt("forcedSides",forcedSides);
         tag.putInt("action",controlAction); tag.putBoolean("high",controlHigh); tag.putInt("metric",sensorMetric); tag.putInt("condition",sensorCondition);
         tag.putIntArray("outputMode",outputMode); tag.putIntArray("outputSelection",outputSelection); tag.putLongArray("outputLimit",outputLimit);
         ListTag faces = new ListTag();
@@ -686,6 +707,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         energy = Math.max(0,tag.getLong("energy")); heat=finite(tag,"heat"); carbon=finite(tag,"carbon"); burnTime=finite(tag,"burnTime"); rpm=finite(tag,"rpm"); energyFraction=Math.min(.999999,finite(tag,"fraction"));
         for(int i=0;i<4;i++) { buffers[i].capacity = Double.MAX_VALUE; buffers[i].load(tag.getCompound("buffer"+i),registries); }
         inventory.clearContent(); inventory.fromTag(tag.getList("inventory",Tag.TAG_COMPOUND),registries);
+        forcedSides=tag.getInt("forcedSides") & 0x3f;
         controlAction=Math.clamp(tag.getInt("action"),0,6); controlHigh=!tag.contains("high") || tag.getBoolean("high");
         sensorMetric=Math.clamp(tag.getInt("metric"),0,9); sensorCondition=Math.clamp(tag.getInt("condition"),0,9);
         int[] modes=tag.getIntArray("outputMode"), selections=tag.getIntArray("outputSelection"); long[] limits=tag.getLongArray("outputLimit");

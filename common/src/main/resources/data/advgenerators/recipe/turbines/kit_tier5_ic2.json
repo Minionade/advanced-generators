@@ -1,0 +1,34 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "ic2"
+      ]
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ic2"
+    }
+  ],
+  "pattern": [
+    "XXX",
+    "XRX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "ic2:alloy"
+    },
+    "R": {
+      "item": "advgenerators:upgrade_kit"
+    }
+  },
+  "result": {
+    "id": "advgenerators:turbine_kit_tier5",
+    "count": 1
+  }
+}

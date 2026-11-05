@@ -1,0 +1,44 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:any_mods_loaded",
+      "values": [
+        "team_reborn_energy"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "modern_industrialization"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "ic2"
+        }
+      ]
+    }
+  ],
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "advgenerators:eu_output_hv"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "advgenerators:blocks/eu_output_hv"
+}
