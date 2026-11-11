@@ -103,7 +103,7 @@ public final class FabricTransfers {
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
             if(module.kind()==MachineKind.FLUID_OUTPUT_SELECT) {
                 var source=fluids(module,side);var destination=FluidStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
-                if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,81000,null);core.recordOutput(module,side,moved);}
+                if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,81000,null);core.recordOutput(module,side,moved/81.0);}
             } else if(module.kind()==MachineKind.ITEM_OUTPUT) {
                 var source=items(module,side);var destination=ItemStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());
                 if(source!=null&&destination!=null){long moved=StorageUtil.move(source,destination,v->true,64,null);core.recordOutput(module,side,moved);}

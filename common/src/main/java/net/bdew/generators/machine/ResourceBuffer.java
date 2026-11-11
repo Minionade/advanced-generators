@@ -38,6 +38,17 @@ public final class ResourceBuffer {
         if (!simulate) { amount -= result; if (amount < 1e-9) clear(); }
         return result;
     }
+    /** Integer APIs must round before mutating, retaining fractional recipe progress. */
+    public int insertWhole(boolean item, ResourceLocation id, DataComponentPatch components, int quantity, boolean simulate) {
+        int accepted = (int) Math.floor(insert(item, id, components, quantity, true));
+        if (!simulate && accepted > 0) insert(item, id, components, accepted, false);
+        return accepted;
+    }
+    public int extractWhole(int quantity, boolean simulate) {
+        int extracted = (int) Math.floor(extract(quantity, true));
+        if (!simulate && extracted > 0) extract(extracted, false);
+        return extracted;
+    }
     public void clear() { id = null; amount = 0; components = DataComponentPatch.EMPTY; }
     public ItemStack stack() {
         if (empty() || !item) return ItemStack.EMPTY;

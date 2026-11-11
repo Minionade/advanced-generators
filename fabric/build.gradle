@@ -17,6 +17,10 @@ configurations {
     developmentFabric.extendsFrom common
 }
 dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly files(configurations.compileClasspath)
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
     modImplementation "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
@@ -36,3 +40,5 @@ shadowJar { configurations = [project.configurations.shadowCommon]; archiveClass
 remapJar { inputFile.set shadowJar.archiveFile; dependsOn shadowJar; archiveClassifier = null }
 jar { archiveClassifier = 'dev' }
 sourcesJar { from project(':common').sourceSets.main.allSource }
+
+test { useJUnitPlatform() }

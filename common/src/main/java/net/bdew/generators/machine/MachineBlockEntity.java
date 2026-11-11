@@ -268,6 +268,9 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             default -> c.exchangerCapacity;
         };
         for (var buffer : buffers) buffer.capacity = capacity;
+        // The Scala fuel controller truncates its tank when external tanks are removed.
+        if (kind() == MachineKind.FUEL_TURBINE_CONTROLLER)
+            buffers[0].amount = Math.min(buffers[0].amount, capacity);
 
         // The network may have lost capacitors or its energy config may have changed.
         // Recalculate stored energy against the new capacity immediately.
@@ -543,6 +546,13 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (!item && (kind() == MachineKind.STEAM_TURBINE_CONTROLLER || kind() == MachineKind.SYNGAS_CONTROLLER && slot == 1)) id = net.bdew.generators.Generators.id("steam");
         double added = buffers[slot].insert(item,id,patch,amount,simulate); if (!simulate && added > 0) setChanged(); return added;
     }
+    public int insertWholeResource(int slot, boolean item, ResourceLocation id, DataComponentPatch patch, int amount, boolean simulate) {
+        if (!accepts(slot,item,id,patch)) return 0;
+        if (!item && (kind() == MachineKind.STEAM_TURBINE_CONTROLLER || kind() == MachineKind.SYNGAS_CONTROLLER && slot == 1)) id = net.bdew.generators.Generators.id("steam");
+        int added = buffers[slot].insertWhole(item,id,patch,amount,simulate);
+        if (!simulate && added > 0) setChanged();
+        return added;
+    }
     public long extractEnergy(long amount, boolean simulate) {
         long moved = Math.max(0,Math.min(amount,energy)); if (!simulate && moved > 0) { energy -= moved; setChanged(); } return moved;
     }
@@ -580,8 +590,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 default -> value >= 1;
             };
         }
-        if (kind() == MachineKind.EXCHANGER_CONTROLLER && metric >= 2 && metric <= 5) {
-            ResourceBuffer buffer = buffers[metric - 2];
+        if (c.kind() == MachineKind.EXCHANGER_CONTROLLER && metric >= 2 && metric <= 5) {
+            ResourceBuffer buffer = c.buffers[metric - 2];
             return switch (sensorCondition) {
                 case 0 -> buffer.empty();
                 case 1 -> !buffer.empty() && buffer.item;
