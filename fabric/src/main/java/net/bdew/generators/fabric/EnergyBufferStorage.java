@@ -34,7 +34,7 @@ final class EnergyBufferStorage implements EnergyStorage {
     @Override public long getAmount() { return (long) (controller.energy / ratio()); }
     @Override public long getCapacity() { return (long) (controller.energyCapacity / ratio()); }
     @Override public boolean supportsExtraction() {
-        return module.controller() == controller && module.outputEnabled(side);
+        return controller.canAccessFrom(module) && module.outputEnabled(side);
     }
     @Override public boolean supportsInsertion() { return false; }
 }

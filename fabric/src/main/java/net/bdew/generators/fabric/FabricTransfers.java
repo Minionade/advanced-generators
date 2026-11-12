@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.CombinedStorage;
+import net.fabricmc.fabric.api.transfer.v1.storage.base.FilteringStorage;
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -44,27 +45,35 @@ public final class FabricTransfers {
             if(machine.kind()!=MachineKind.FLUID_OUTPUT_SELECT)return null;
             var core=machine.controller(); if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<FluidBufferStorage>();
-            for(int slot:core.outputSlots(core.outputSelection(machine,side)))parts.add(new FluidBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(0))parts.add(new FluidBufferStorage(core,machine,side,slot,false,true));
             return new CombinedStorage<FluidVariant,FluidBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.FLUID_INPUT?machine.controller():null;
         if(core==null)return null;
         var parts=new ArrayList<FluidBufferStorage>();
-        for(int slot:core.inputSlots())parts.add(new FluidBufferStorage(core,slot,true,false));
+        for(int slot:core.inputSlots())parts.add(new FluidBufferStorage(core,machine,side,slot,true,false));
         return new CombinedStorage<FluidVariant,FluidBufferStorage>(parts);
     }
     public static Storage<ItemVariant> items(MachineBlockEntity machine,Direction side) {
         if(machine.kind()==MachineKind.ITEM_OUTPUT) {
             var core=machine.controller();if(core==null||!machine.outputEnabled(side))return null;
             var parts=new ArrayList<ItemBufferStorage>();
-            for(int slot:core.outputSlots(core.outputSelection(machine,side)))parts.add(new ItemBufferStorage(core,slot,false,true));
+            for(int slot:core.outputSlots(0))parts.add(new ItemBufferStorage(core,machine,side,slot,false,true));
             return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
         }
         var core=machine.kind().controller()?machine:machine.kind()==MachineKind.ITEM_INPUT?machine.controller():null;
         if(core==null)return null;
-        if(core.kind()==MachineKind.SYNGAS_CONTROLLER)return InventoryStorage.of(core.inventory,side);
+        if(core.kind()==MachineKind.SYNGAS_CONTROLLER) {
+            // Like the Scala InventoryItemHandler, automation may insert carbon but not remove it.
+            return new FilteringStorage<ItemVariant>(InventoryStorage.of(core.inventory,side)) {
+                @Override protected boolean canInsert(ItemVariant resource) { return core.canAccessFrom(machine); }
+                @Override protected boolean canExtract(ItemVariant resource) { return false; }
+                @Override public boolean supportsInsertion() { return core.canAccessFrom(machine); }
+                @Override public boolean supportsExtraction() { return false; }
+            };
+        }
         var parts=new ArrayList<ItemBufferStorage>();
-        for(int slot:core.inputSlots())parts.add(new ItemBufferStorage(core,slot,true,false));
+        for(int slot:core.inputSlots())parts.add(new ItemBufferStorage(core,machine,side,slot,true,false));
         return new CombinedStorage<ItemVariant,ItemBufferStorage>(parts);
     }
     public static Object energy(MachineBlockEntity machine,Direction side) {

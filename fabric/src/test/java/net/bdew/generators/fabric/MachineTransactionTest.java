@@ -17,7 +17,9 @@ class MachineTransactionTest {
     private MachineBlockEntity controller() throws Exception {
         var machine = mock(MachineBlockEntity.class);
         var buffers = new ResourceBuffer[]{new ResourceBuffer(16000)};
-        MachineBlockEntity.class.getField("buffers").set(machine, buffers);
+        var field = MachineBlockEntity.class.getField("buffers");
+        field.setAccessible(true);
+        field.set(machine, buffers);
         buffers[0].insert(true, ResourceLocation.parse("minecraft:obsidian"), DataComponentPatch.EMPTY, 2.75, false);
         return machine;
     }
@@ -63,6 +65,7 @@ class MachineTransactionTest {
         var machine = controller();
         var module = mock(MachineBlockEntity.class);
         when(module.controller()).thenReturn(machine);
+        when(machine.canAccessFrom(module)).thenReturn(true);
         when(module.outputEnabled(Direction.NORTH)).thenReturn(true);
         when(machine.outputLimit(module, Direction.NORTH)).thenReturn(1000L);
         doCallRealMethod().when(machine).extractEnergy(anyLong(), anyBoolean());

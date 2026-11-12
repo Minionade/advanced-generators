@@ -6,30 +6,33 @@ import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage;
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Direction;
 
 /** A live view: cached pipes must never commit a stale copy of machine contents. */
 final class FluidBufferStorage implements SingleSlotStorage<FluidVariant> {
-    private final MachineBlockEntity machine;
+    private final MachineBlockEntity machine, module;
+    private final Direction side;
     private final int slot;
     private final boolean insert, extract;
     private final MachineTransaction state;
-    FluidBufferStorage(MachineBlockEntity machine, int slot, boolean insert, boolean extract) {
-        this.machine = machine; this.slot = slot; this.insert = insert; this.extract = extract;
+    FluidBufferStorage(MachineBlockEntity machine, MachineBlockEntity module, Direction side, int slot, boolean insert, boolean extract) {
+        this.machine = machine; this.module = module; this.side = side; this.slot = slot; this.insert = insert; this.extract = extract;
         state = MachineTransaction.of(machine);
     }
+    private boolean accessible() { return machine.canAccessBuffer(module, side, slot, extract); }
     private ResourceBuffer buffer() { return machine.buffers[slot]; }
     @Override public FluidVariant getResource() {
         var buffer = buffer();
-        return buffer.empty() || buffer.item != false ? FluidVariant.blank() : FluidVariant.of(buffer.fluid(), buffer.components);
+        return !accessible() || buffer.empty() || buffer.item ? FluidVariant.blank() : FluidVariant.of(buffer.fluid(), buffer.components);
     }
     @Override public boolean isResourceBlank() { return getResource().isBlank(); }
     @Override public long getAmount() { return isResourceBlank() ? 0 : (long) Math.floor(buffer().amount * 81); }
     @Override public long getCapacity() { return (long) Math.floor(buffer().capacityFor(false) * 81); }
-    @Override public boolean supportsInsertion() { return insert; }
-    @Override public boolean supportsExtraction() { return extract; }
+    @Override public boolean supportsInsertion() { return insert && accessible(); }
+    @Override public boolean supportsExtraction() { return extract && accessible(); }
     @Override public long insert(FluidVariant resource, long maxAmount, TransactionContext transaction) {
         if (maxAmount < 0) throw new IllegalArgumentException("Negative transfer amount");
-        if (!insert || resource.isBlank() || maxAmount == 0) return 0;
+        if (!insert || !accessible() || resource.isBlank() || maxAmount == 0) return 0;
         var id = BuiltInRegistries.FLUID.getKey(resource.getFluid());
         double accepted = machine.insertResource(slot, false, id, resource.getComponents(), maxAmount / 81.0, true);
         long moved = Math.min(maxAmount, (long) Math.floor(accepted * 81));
@@ -41,7 +44,7 @@ final class FluidBufferStorage implements SingleSlotStorage<FluidVariant> {
     }
     @Override public long extract(FluidVariant resource, long maxAmount, TransactionContext transaction) {
         if (maxAmount < 0) throw new IllegalArgumentException("Negative transfer amount");
-        if (!extract || resource.isBlank() || !resource.equals(getResource())) return 0;
+        if (!extract || !accessible() || resource.isBlank() || !resource.equals(getResource())) return 0;
         long moved = Math.min(maxAmount, getAmount());
         if (moved > 0) {
             state.beforeChange(transaction);
