@@ -279,7 +279,11 @@ public final class MachineMenu extends AbstractContainerMenu {
             default -> { return; }
         }
     }
-    @Override public boolean stillValid(Player player) { return machine.getLevel()!=null && player.distanceToSqr(machine.getBlockPos().getX()+.5,machine.getBlockPos().getY()+.5,machine.getBlockPos().getZ()+.5)<64; }
+    @Override public boolean stillValid(Player player) {
+        return machine.getLevel()!=null && !machine.isRemoved() && player.level()==machine.getLevel()
+            && machine.getLevel().getBlockEntity(machine.getBlockPos())==machine
+            && player.distanceToSqr(machine.getBlockPos().getX()+.5,machine.getBlockPos().getY()+.5,machine.getBlockPos().getZ()+.5)<64;
+    }
     @Override public ItemStack quickMoveStack(Player player,int slotIndex) {
         if(slotIndex<0 || slotIndex>=slots.size()) return ItemStack.EMPTY;
         var slot=slots.get(slotIndex); if(!slot.hasItem()) return ItemStack.EMPTY;

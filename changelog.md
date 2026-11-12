@@ -1,3 +1,18 @@
+### Unreleased
+
+* Upgrade kits reconnect the replacement turbine/capacitor before notifying neighbouring modules
+* Cached pipes now respect current redstone settings, hot/cold selection, and controller removal or replacement
+* Enforce the original six registered output-face limit; unregistered faces no longer output using default settings
+* Fabric: prevent automation from extracting carbon items through the syngas input
+* Close machine menus when their block entity is removed or replaced
+* Prevent modules reconnecting to a controller while it is being broken
+* Fix heat-exchanger sensors reading the sensor module instead of the controller's resource buffers
+* Clamp stored fuel when removing fuel tanks, matching the original Scala controller
+* NeoForge: preserve fractional exchanger resources during whole-item/millibucket transfers; prevent fractional insertion duplication
+* NeoForge: drain the fluid actually accepted by the receiver when both exchanger outputs are enabled
+* Fabric: use live buffer and energy views with shared transaction rollback, preserving fractional output and avoiding stale cached-port contents
+* Fabric: show fluid output rates in millibuckets instead of droplets
+
 ### 2.0.3
 
 * Machines drop themselves again: loot tables, the pickaxe tag and the original block strength were missing

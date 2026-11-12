@@ -22,10 +22,18 @@ public final class UpgradeKitItem extends Item {
             if (target == null) continue;
             if (!(BuiltInRegistries.BLOCK.get(recipe.id("to")) instanceof MachineBlock replacement)) return InteractionResult.FAIL;
             if (level.isClientSide) return InteractionResult.SUCCESS;
+            if (!(level.getBlockEntity(target) instanceof MachineBlockEntity oldMachine)) return InteractionResult.FAIL;
+            var core = oldMachine.controller();
             var old = level.getBlockState(target);
             var replacementState = replacement.defaultBlockState();
-            if (replacement.kind.hasFacing()) replacementState = replacementState.setValue(BlockStateProperties.FACING, old.getValue(BlockStateProperties.FACING));
-            level.setBlock(target, replacementState, 3);
+            if (replacement.kind.hasFacing() && old.hasProperty(BlockStateProperties.FACING))
+                replacementState = replacementState.setValue(BlockStateProperties.FACING, old.getValue(BlockStateProperties.FACING));
+            // Restore the link before notifying neighbours: the upgraded module may be a bridge
+            // to the rest of the machine. The Scala UpgradeKit explicitly reconnects it too.
+            if (!level.setBlock(target, replacementState, 2)) return InteractionResult.FAIL;
+            if (level.getBlockEntity(target) instanceof MachineBlockEntity upgraded && core != null && core != oldMachine)
+                upgraded.connectTo(core);
+            level.updateNeighborsAt(target, replacement);
             level.playSound(null, target, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 1, 1);
             if (!player.getAbilities().instabuild) ctx.getItemInHand().shrink(1);
             return InteractionResult.CONSUME;

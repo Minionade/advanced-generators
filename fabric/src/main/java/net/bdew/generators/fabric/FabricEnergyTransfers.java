@@ -41,24 +41,15 @@ final class FabricEnergyTransfers implements FabricTransfers.EnergyIntegration {
             if(!module.outputEnabled(side))continue;
             BlockEntity target=level.getBlockEntity(module.getBlockPos().relative(side));if(target==null)continue;
             var destination=EnergyStorage.SIDED.find(level,target.getBlockPos(),side.getOpposite());if(destination==null)continue;
-            if(module.kind().isEuOutput()) {
-                long movedEu=Math.min(module.kind().euOutputRate(),(long)(Math.max(0,core.outputLimit(module,side))/net.bdew.generators.config.GeneratorConfig.fePerEu()));
-                movedEu=Math.min(movedEu,(long)(core.energy/net.bdew.generators.config.GeneratorConfig.fePerEu()));
-                if(movedEu>0){
-                    // the Transfer API needs a real transaction: commit it only when something was taken
-                    try(var tx=net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()){
-                        long accepted=destination.insert(movedEu,tx);
-                        if(accepted>0){tx.commit();core.extractEnergy((long)Math.ceil(accepted*net.bdew.generators.config.GeneratorConfig.fePerEu()),false);core.recordOutput(module,side,accepted);}
-                    }
+            var source = new EnergyBufferStorage(core, module, side, module.kind());
+            // Source and destination must both roll back if the receiver accepts only part of the offer.
+            try (var tx = net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()) {
+                long offered;
+                try (var simulation = tx.openNested()) {
+                    offered = source.extract(Long.MAX_VALUE, simulation);
                 }
-            } else {
-                long moved=core.extractEnergy(Math.min(core.outputLimit(module,side),Integer.MAX_VALUE),true);
-                if(moved>0){
-                    try(var tx=net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()){
-                        long accepted=destination.insert(moved,tx);
-                        if(accepted>0){tx.commit();core.extractEnergy(accepted,false);core.recordOutput(module,side,accepted);}
-                    }
-                }
+                long accepted = destination.insert(offered, tx);
+                if (accepted > 0 && source.extract(accepted, tx) == accepted) tx.commit();
             }
         }
     }

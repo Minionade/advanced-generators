@@ -58,6 +58,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     private MultiblockNetwork cachedNetwork;
     private long networkRevision = -1, networkTick = -1;
     private BlockPos connectedCore;
+    private boolean acceptingModules = true;
     public MachineBlockEntity(BlockPos pos, BlockState state) {
         super(ModContent.MACHINE_ENTITY.get(), pos, state);
         Arrays.fill(outputLimit, Integer.MAX_VALUE);
@@ -127,7 +128,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return level.getBlockEntity(candidates.iterator().next()) instanceof MachineBlockEntity core && connectTo(core);
     }
     public boolean canAcceptModule(MachineKind moduleKind) {
-        if (!kind().controller() || moduleKind.controller() || level == null) return false;
+        if (!acceptingModules || isRemoved() || !kind().controller() || moduleKind.controller() || level == null) return false;
         int max = GeneratorConfig.INSTANCE.limit(kind(), moduleKind.category);
         if (max <= 0) return false;
         return members().stream().filter(m -> m.kind().category.equals(moduleKind.category)).count() < max;
@@ -150,6 +151,9 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     }
     public void detachModules() {
         if (level == null || !kind().controller()) return;
+        // Neighbour callbacks run while the controller is still in the level.
+        // Do not let those callbacks reconnect modules to the controller being broken.
+        acceptingModules = false;
         for (var module : members()) {
             module.connectedCore = null;
             module.clearForcedSides();
@@ -160,12 +164,12 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         MultiblockNetwork.invalidate(level);
     }
     public MachineBlockEntity controller() {
-        if (level == null) return null;
+        if (level == null || isRemoved()) return null;
         if (!kind().controller() && connectedCore == null) return null;
         var network = network();
         if (network.error() != 0 || network.controller() == null || !level.hasChunkAt(network.controller())) return null;
         if (!kind().controller() && !network.members().contains(worldPosition)) return null;
-        return level.getBlockEntity(network.controller()) instanceof MachineBlockEntity m ? m : null;
+        return level.getBlockEntity(network.controller()) instanceof MachineBlockEntity m && m.acceptingModules && !m.isRemoved() ? m : null;
     }
     public List<MachineBlockEntity> members() {
         var result = new ArrayList<MachineBlockEntity>();
@@ -268,6 +272,9 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             default -> c.exchangerCapacity;
         };
         for (var buffer : buffers) buffer.capacity = capacity;
+        // The Scala fuel controller truncates its tank when external tanks are removed.
+        if (kind() == MachineKind.FUEL_TURBINE_CONTROLLER)
+            buffers[0].amount = Math.min(buffers[0].amount, capacity);
 
         // The network may have lost capacitors or its energy config may have changed.
         // Recalculate stored energy against the new capacity immediately.
@@ -414,13 +421,29 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return disabled ? false : fallback;
     }
     public boolean outputEnabled(Direction side) {
-        if (!kind().output() || level == null || side == null) return false;
+        if (!kind().output() || level == null || side == null || isRemoved()) return false;
+        if (kind().hasFacing() && getBlockState().getValue(BlockStateProperties.FACING) != side) return false;
         var core = kind().controller() ? this : controller();
         if (core == null) return false;
         var config = core.outputConfigs.get(new OutputFace(worldPosition, side));
-        int mode = config == null ? core.outputMode[side.get3DDataValue()] : config.mode;
+        // Only the six registered faces may output. Falling back to ALWAYS here
+        // allowed unregistered faces and a seventh output to bypass the limit.
+        if (config == null) return false;
+        int mode = config.mode;
         boolean signal = level.hasNeighborSignal(worldPosition);
         return mode == 0 || mode == 1 && signal || mode == 2 && !signal;
+    }
+    /** Checked on every transfer, since cables may retain a handler after settings or links change. */
+    public boolean canAccessFrom(MachineBlockEntity module) {
+        return !isRemoved() && !module.isRemoved() && acceptingModules
+            && (module == this || module.controller() == this);
+    }
+    public boolean canAccessBuffer(MachineBlockEntity module, Direction side, int slot, boolean output) {
+        if (!canAccessFrom(module)) return false;
+        if (output && !module.outputEnabled(side)) return false;
+        int selection = output && module.kind() == MachineKind.FLUID_OUTPUT_SELECT ? outputSelection(module, side) : 0;
+        for (int allowed : output ? outputSlots(selection) : inputSlots()) if (allowed == slot) return true;
+        return false;
     }
     public void refreshOutputFaces() {
         if (level == null || level.isClientSide || !kind().controller()) return;
@@ -442,7 +465,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                     || module.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING) == direction;
                 boolean available = !memberPositions.contains(target) && !target.equals(worldPosition)
                     && facingMatches && (apiPort || module.forced(direction) || TransferPlatform.canOutputOn(module, direction));
-                if (available) {
+                if (available && (outputConfigs.containsKey(face) || outputConfigs.size() < 6)) {
                     outputConfigs.computeIfAbsent(face, key -> {
                         changed[0] = true;
                         int side = direction.get3DDataValue();
@@ -543,6 +566,13 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (!item && (kind() == MachineKind.STEAM_TURBINE_CONTROLLER || kind() == MachineKind.SYNGAS_CONTROLLER && slot == 1)) id = net.bdew.generators.Generators.id("steam");
         double added = buffers[slot].insert(item,id,patch,amount,simulate); if (!simulate && added > 0) setChanged(); return added;
     }
+    public int insertWholeResource(int slot, boolean item, ResourceLocation id, DataComponentPatch patch, int amount, boolean simulate) {
+        if (!accepts(slot,item,id,patch)) return 0;
+        if (!item && (kind() == MachineKind.STEAM_TURBINE_CONTROLLER || kind() == MachineKind.SYNGAS_CONTROLLER && slot == 1)) id = net.bdew.generators.Generators.id("steam");
+        int added = buffers[slot].insertWhole(item,id,patch,amount,simulate);
+        if (!simulate && added > 0) setChanged();
+        return added;
+    }
     public long extractEnergy(long amount, boolean simulate) {
         long moved = Math.max(0,Math.min(amount,energy)); if (!simulate && moved > 0) { energy -= moved; setChanged(); } return moved;
     }
@@ -580,8 +610,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
                 default -> value >= 1;
             };
         }
-        if (kind() == MachineKind.EXCHANGER_CONTROLLER && metric >= 2 && metric <= 5) {
-            ResourceBuffer buffer = buffers[metric - 2];
+        if (c.kind() == MachineKind.EXCHANGER_CONTROLLER && metric >= 2 && metric <= 5) {
+            ResourceBuffer buffer = c.buffers[metric - 2];
             return switch (sensorCondition) {
                 case 0 -> buffer.empty();
                 case 1 -> !buffer.empty() && buffer.item;

@@ -1,27 +1,55 @@
 package net.bdew.generators.fabric;
 
 import net.bdew.generators.machine.MachineBlockEntity;
+import net.bdew.generators.machine.ResourceBuffer;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
-import net.fabricmc.fabric.api.transfer.v1.fluid.base.SingleFluidStorage;
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage;
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Direction;
 
-final class FluidBufferStorage extends SingleFluidStorage {
-    private final MachineBlockEntity machine;
+/** A live view: cached pipes must never commit a stale copy of machine contents. */
+final class FluidBufferStorage implements SingleSlotStorage<FluidVariant> {
+    private final MachineBlockEntity machine, module;
+    private final Direction side;
     private final int slot;
-    private final boolean insert;
-    private final boolean extract;
-    FluidBufferStorage(MachineBlockEntity machine,int slot,boolean insert,boolean extract) {
-        this.machine=machine; this.slot=slot; this.insert=insert; this.extract=extract;
-        var buffer=machine.buffers[slot];
-        if(!buffer.empty()&&!buffer.item){variant=FluidVariant.of(buffer.fluid()); amount=(long)Math.floor(buffer.amount*81+1e-9);}
+    private final boolean insert, extract;
+    private final MachineTransaction state;
+    FluidBufferStorage(MachineBlockEntity machine, MachineBlockEntity module, Direction side, int slot, boolean insert, boolean extract) {
+        this.machine = machine; this.module = module; this.side = side; this.slot = slot; this.insert = insert; this.extract = extract;
+        state = MachineTransaction.of(machine);
     }
-    @Override protected long getCapacity(FluidVariant v) { return Math.max(0,(long)Math.floor(machine.buffers[slot].capacity*81)); }
-    @Override protected boolean canInsert(FluidVariant v) { return insert && machine.accepts(slot,false,BuiltInRegistries.FLUID.getKey(v.getFluid()),v.getComponents()); }
-    @Override protected boolean canExtract(FluidVariant v) { return extract; }
-    @Override protected void onFinalCommit() {
-        var buffer=machine.buffers[slot];
-        if(amount<=0) buffer.clear();
-        else { buffer.item=false; buffer.id=BuiltInRegistries.FLUID.getKey(variant.getFluid()); buffer.components=variant.getComponents(); buffer.amount=amount/81.0; }
-        machine.setChanged();
+    private boolean accessible() { return machine.canAccessBuffer(module, side, slot, extract); }
+    private ResourceBuffer buffer() { return machine.buffers[slot]; }
+    @Override public FluidVariant getResource() {
+        var buffer = buffer();
+        return !accessible() || buffer.empty() || buffer.item ? FluidVariant.blank() : FluidVariant.of(buffer.fluid(), buffer.components);
+    }
+    @Override public boolean isResourceBlank() { return getResource().isBlank(); }
+    @Override public long getAmount() { return isResourceBlank() ? 0 : (long) Math.floor(buffer().amount * 81); }
+    @Override public long getCapacity() { return (long) Math.floor(buffer().capacityFor(false) * 81); }
+    @Override public boolean supportsInsertion() { return insert && accessible(); }
+    @Override public boolean supportsExtraction() { return extract && accessible(); }
+    @Override public long insert(FluidVariant resource, long maxAmount, TransactionContext transaction) {
+        if (maxAmount < 0) throw new IllegalArgumentException("Negative transfer amount");
+        if (!insert || !accessible() || resource.isBlank() || maxAmount == 0) return 0;
+        var id = BuiltInRegistries.FLUID.getKey(resource.getFluid());
+        double accepted = machine.insertResource(slot, false, id, resource.getComponents(), maxAmount / 81.0, true);
+        long moved = Math.min(maxAmount, (long) Math.floor(accepted * 81));
+        if (moved > 0) {
+            state.beforeChange(transaction);
+            machine.insertResource(slot, false, id, resource.getComponents(), moved / 81.0, false);
+        }
+        return moved;
+    }
+    @Override public long extract(FluidVariant resource, long maxAmount, TransactionContext transaction) {
+        if (maxAmount < 0) throw new IllegalArgumentException("Negative transfer amount");
+        if (!extract || !accessible() || resource.isBlank() || !resource.equals(getResource())) return 0;
+        long moved = Math.min(maxAmount, getAmount());
+        if (moved > 0) {
+            state.beforeChange(transaction);
+            buffer().extract(moved / 81.0, false);
+        }
+        return moved;
     }
 }
