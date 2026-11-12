@@ -59,6 +59,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     private long networkRevision = -1, networkTick = -1;
     private BlockPos connectedCore;
     private boolean acceptingModules = true;
+    private final ModuleInventory moduleInventory = new ModuleInventory();
     public MachineBlockEntity(BlockPos pos, BlockState state) {
         super(ModContent.MACHINE_ENTITY.get(), pos, state);
         Arrays.fill(outputLimit, Integer.MAX_VALUE);
@@ -92,6 +93,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         return cachedNetwork;
     }
     public BlockPos connectedCore() { return connectedCore; }
+    ModuleInventory moduleInventory() { return moduleInventory; }
     /** Output faces forced with a wrench, one bit per direction: they become outputs even with nothing there to receive. */
     private int forcedSides;
     public boolean forced(Direction side) { return (forcedSides >> side.get3DDataValue() & 1) != 0; }
@@ -108,6 +110,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public boolean connectTo(MachineBlockEntity core) {
         if (kind().controller() || core == null || !core.kind().controller() || connectedCore != null || !core.canAcceptModule(kind())) return false;
         connectedCore = core.getBlockPos().immutable();
+        core.moduleInventory.remember(worldPosition, kind());
+        core.setChanged();
         setChanged();
         if (level != null) {
             MultiblockNetwork.invalidate(level);
@@ -119,9 +123,15 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     public boolean tryConnect() {
         if (level == null || kind().controller()) return false;
         if (connectedCore != null) {
+            // A neighbour update while the controller's chunk is unloaded must not erase
+            // the saved connection or its forced output faces.
+            if (!level.hasChunkAt(connectedCore)) return false;
             if (controller() != null) return false;
+            if (level.getBlockEntity(connectedCore) instanceof MachineBlockEntity core && core.kind().controller()
+                && core.acceptingModules && !core.moduleInventory.knowsAll(core.network().members())) return false;
             connectedCore = null;
             clearForcedSides();
+            setChanged();
         }
         var candidates = MultiblockNetwork.findConnections(level, worldPosition, kind());
         if (candidates.isEmpty()) return false;
@@ -131,7 +141,10 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         if (!acceptingModules || isRemoved() || !kind().controller() || moduleKind.controller() || level == null) return false;
         int max = GeneratorConfig.INSTANCE.limit(kind(), moduleKind.category);
         if (max <= 0) return false;
-        return members().stream().filter(m -> m.kind().category.equals(moduleKind.category)).count() < max;
+        var positions = network().members();
+        // Do not grant extra module slots just because some existing modules are unloaded.
+        return moduleInventory.knowsAll(positions)
+            && moduleInventory.kinds(positions).stream().filter(k -> k.category.equals(moduleKind.category)).count() < max;
     }
     public boolean hasRequiredModules() {
         return missingRequiredModules().isEmpty();
@@ -144,7 +157,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             default -> Map.<String,Integer>of();
         };
         var counts = new HashMap<String,Integer>();
-        for (var module : members()) counts.merge(module.kind().category,1,Integer::sum);
+        for (var kind : moduleInventory.kinds(network().members())) counts.merge(kind.category,1,Integer::sum);
         var missing = new LinkedHashMap<String,Integer>();
         required.forEach((category,count) -> { if (counts.getOrDefault(category,0)<count) missing.put(category,count-counts.getOrDefault(category,0)); });
         return missing;
@@ -250,8 +263,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         var c = GeneratorConfig.INSTANCE;
         energyCapacity = c.energyCapacity; maxOutput = 0; turbines = heatingChambers = mixingChambers = exchangers = 0;
         int tanks = 0; boolean tier1 = false, tier2 = false; double totalInertia = 0;
-        for (var m : members()) {
-            var kind = m.kind();
+        var positions = network().members();
+        for (var kind : moduleInventory.kinds(positions)) {
             switch (kind.category) {
                 case "turbine" -> { turbines++; maxOutput += c.turbineOutput[kind.tier-1]; totalInertia += c.turbineInertia[kind.tier-1]; }
                 case "powerCapacitor" -> energyCapacity += c.capacitorCapacity[kind.tier-1];
@@ -271,6 +284,14 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
             case SYNGAS_CONTROLLER -> c.syngasCapacity;
             default -> c.exchangerCapacity;
         };
+        // Old Java saves had no membership; Scala saves had positions but no types.
+        // Until their unloaded part can be identified, retain the saved contents without
+        // inventing additional usable storage. Once membership is known, removals shrink normally.
+        if (!moduleInventory.knowsAll(positions)) {
+            long retainedEnergy = energyFraction > 0 && energy < Long.MAX_VALUE ? energy + 1 : energy;
+            energyCapacity = Math.max(energyCapacity, retainedEnergy);
+            if (kind() == MachineKind.FUEL_TURBINE_CONTROLLER) capacity = Math.max(capacity, buffers[0].amount);
+        }
         for (var buffer : buffers) buffer.capacity = capacity;
         // The Scala fuel controller truncates its tank when external tanks are removed.
         if (kind() == MachineKind.FUEL_TURBINE_CONTROLLER)
@@ -710,6 +731,7 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
     @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag,registries);
         if (connectedCore != null) tag.putLong("connectedCore", connectedCore.asLong());
+        if (kind().controller()) moduleInventory.save(tag);
         tag.putLong("energy",energy); tag.putDouble("heat",heat); tag.putDouble("carbon",carbon); tag.putDouble("burnTime",burnTime); tag.putDouble("rpm",rpm); tag.putDouble("fraction",energyFraction);
         for(int i=0;i<4;i++) tag.put("buffer"+i,buffers[i].save(registries));
         tag.put("inventory",inventory.createTag(registries));
@@ -734,6 +756,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         // Machines saved by the 1.20.1 mod use a different layout; translate them on load.
         CompoundTag tag = LegacyBlockEntityData.upgrade(saved, kind());
         super.loadAdditional(tag,registries);
+        moduleInventory.load(tag);
+        cachedNetwork = null;
         connectedCore = tag.contains("connectedCore", Tag.TAG_LONG) ? BlockPos.of(tag.getLong("connectedCore")) : null;
         energy = Math.max(0,tag.getLong("energy")); heat=finite(tag,"heat"); carbon=finite(tag,"carbon"); burnTime=finite(tag,"burnTime"); rpm=finite(tag,"rpm"); energyFraction=Math.min(.999999,finite(tag,"fraction"));
         for(int i=0;i<4;i++) { buffers[i].capacity = Double.MAX_VALUE; buffers[i].load(tag.getCompound("buffer"+i),registries); }
@@ -746,8 +770,8 @@ public class MachineBlockEntity extends BlockEntity implements MenuProvider {
         lastExchangerOutput=ResourceLocation.tryParse(tag.getString("lastExchangerOutput"));
         lastExchangerInputItem=tag.getBoolean("lastExchangerInputItem"); lastExchangerOutputItem=tag.getBoolean("lastExchangerOutputItem");
         for(int i=0;i<6;i++) { outputMode[i]=i<modes.length?Math.clamp(modes[i],0,3):0; outputSelection[i]=i<selections.length?Math.clamp(selections[i],0,2):0; outputLimit[i]=i<limits.length?Math.clamp(limits[i],1,Integer.MAX_VALUE):Integer.MAX_VALUE; }
-        // Whatever changed, clients redraw the machine border from this data, so let them look again.
-        if (level != null && level.isClientSide) MultiblockNetwork.invalidate(level);
+        // Saved links also affect other loaded modules' cached networks and client borders.
+        if (level != null) MultiblockNetwork.invalidate(level);
         outputConfigs.clear();
         for (Tag faceEntry : tag.getList("outputConfigs", Tag.TAG_COMPOUND)) {
             if (!(faceEntry instanceof CompoundTag faceTag)) continue;
