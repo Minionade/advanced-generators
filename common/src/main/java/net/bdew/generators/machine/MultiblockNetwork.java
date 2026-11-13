@@ -32,27 +32,41 @@ public record MultiblockNetwork(BlockPos controller, List<BlockPos> members, int
         if (controller == null || !level.hasChunkAt(controller) || !(level.getBlockEntity(controller) instanceof MachineBlockEntity core) || !core.kind().controller())
             return new MultiblockNetwork(null, List.of(), 1);
 
+        var inventory = core.moduleInventory();
+        boolean changed = false;
+        // Only a loaded position can prove a saved module was removed or replaced.
+        // Retain disconnected, unloaded positions as well: an upgrade may temporarily
+        // replace the bridge to them before reconnecting the new block.
+        for (var pos : inventory.positions()) {
+            if (!level.hasChunkAt(pos)) continue;
+            if (level.getBlockEntity(pos) instanceof MachineBlockEntity module && !module.isRemoved()
+                && !module.kind().controller() && controller.equals(module.connectedCore()))
+                changed |= inventory.remember(pos, module.kind());
+            else changed |= inventory.forget(pos);
+        }
+
         var queue = new ArrayDeque<BlockPos>(); var seen = new HashSet<BlockPos>(); var members = new ArrayList<BlockPos>();
-        queue.add(controller); int error = 0;
+        queue.add(controller);
+        boolean allBoundariesLoaded = true;
         while (!queue.isEmpty()) {
             var pos = queue.removeFirst(); if (!seen.add(pos)) continue;
-            // BdLib's safe block-entity lookup ignores unloaded neighbors; it does not
-            // invalidate a structure just because an unrelated adjacent chunk is unloaded.
-            if (!level.hasChunkAt(pos)) continue;
-            if (!(level.getBlockEntity(pos) instanceof MachineBlockEntity machine)) continue;
             if (!pos.equals(controller)) {
-                if (machine.kind().controller() || !controller.equals(machine.connectedCore())) continue;
+                if (!level.hasChunkAt(pos)) {
+                    if (!inventory.contains(pos)) { allBoundariesLoaded = false; continue; }
+                } else {
+                    if (!(level.getBlockEntity(pos) instanceof MachineBlockEntity machine) || machine.isRemoved()
+                        || machine.kind().controller() || !controller.equals(machine.connectedCore())) continue;
+                    changed |= inventory.remember(pos, machine.kind());
+                }
                 members.add(pos.immutable());
             }
-            for (var direction : Direction.values()) {
-                var neighbor = pos.relative(direction);
-                if (!neighbor.equals(controller) && level.hasChunkAt(neighbor) && level.getBlockEntity(neighbor) instanceof MachineBlockEntity module
-                    && !module.kind().controller() && controller.equals(module.connectedCore())) queue.add(neighbor);
-            }
+            for (var direction : Direction.values()) queue.add(pos.relative(direction));
         }
-        var network = new MultiblockNetwork(controller.immutable(), List.copyOf(members), error);
+        changed |= inventory.finishDiscovery(allBoundariesLoaded);
+        if (changed && !level.isClientSide) core.setChanged();
+        var network = new MultiblockNetwork(controller.immutable(), List.copyOf(members), 0);
         core.cacheNetwork(network);
-        for (var pos : members) if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.cacheNetwork(network);
+        for (var pos : members) if (level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) machine.cacheNetwork(network);
         return network;
     }
 }

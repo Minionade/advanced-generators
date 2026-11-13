@@ -1,5 +1,8 @@
 ### Unreleased
 
+* Preserve multiblock capacity, stored fuel/energy, and connections when module chunks unload, including across world reloads
+* Keep loaded branches connected through known unloaded modules; retain their output settings and count unloaded modules towards limits
+* Recover module membership from Scala saves and preserve contents in early Java saves until missing chunks can be inspected
 * Upgrade kits reconnect the replacement turbine/capacitor before notifying neighbouring modules
 * Cached pipes now respect current redstone settings, hot/cold selection, and controller removal or replacement
 * Enforce the original six registered output-face limit; unregistered faces no longer output using default settings
